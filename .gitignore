@@ -206,3 +206,4 @@ eval/results_*.json
 titandb.sqlite
 edit_events.db
 rules_*.yaml
+*.pdf
