@@ -1,0 +1,67 @@
+{
+  "doc_id": "osmre_mortgage_deed_of_trust",
+  "doc_type": "deed_of_trust",
+  "file_path": "data/raw/mortgage/osmre_mortgage_deed_of_trust.pdf",
+  "page_count": 3,
+  "parsed_at": "2026-05-13",
+  "parties": [
+    {
+      "name": "Office of Surface Mining Reclamation and Enforcement",
+      "role": "trustee",
+      "is_entity": true,
+      "capacity": "United States Department of Interior"
+    },
+    {
+      "name": "United States of America",
+      "role": "beneficiary",
+      "is_entity": true,
+      "capacity": null
+    }
+  ],
+  "chain_of_title": [
+    {
+      "instrument_type": "deed_of_trust",
+      "grantor": ["Grantor"],
+      "grantee": ["Office of Surface Mining Reclamation and Enforcement"],
+      "instrument_date": null,
+      "recorded_date": null,
+      "book": null,
+      "page": null,
+      "instrument_number": null,
+      "consideration": null,
+      "source": {
+        "doc_id": "osmre_mortgage_deed_of_trust",
+        "page": 1,
+        "char_span": [160, 760],
+        "snippet": "MORTGAGE OR DEED OF TRUST ... between ... the Grantor, the Office of Surface Mining Reclamation and Enforcement ... Trustee, and the United States of America ... Beneficiary."
+      }
+    }
+  ],
+  "open_liens": [
+    {
+      "lien_type": "deed_of_trust",
+      "creditor": "Office of Surface Mining Reclamation and Enforcement",
+      "debtor": "Grantor",
+      "original_amount": null,
+      "current_balance": null,
+      "recorded_date": null,
+      "book": null,
+      "page": null,
+      "instrument_number": null,
+      "status": "open",
+      "release_reference": null,
+      "source": {
+        "doc_id": "osmre_mortgage_deed_of_trust",
+        "page": 1,
+        "char_span": [520, 1080],
+        "snippet": "A first mortgage, first deed of trust or first-lien security granting OSM a security interest in the Real Property described below..."
+      }
+    }
+  ],
+  "has_recording_stamp": false,
+  "notarized": true,
+  "extraction_warnings": [
+    "Form contains blanks for grantor, permit number, property description, amount, county, and recording references.",
+    "Tax covenant is present but no tax year or tax amount is specified in the form."
+  ]
+}

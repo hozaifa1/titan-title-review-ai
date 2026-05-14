@@ -1,0 +1,59 @@
+{
+  "doc_id": "fromthepage_1875_handwritten_deed",
+  "doc_type": "warranty_deed",
+  "file_path": "data/raw/deed/fromthepage_1875_handwritten_deed.pdf",
+  "page_count": 3,
+  "parsed_at": "2026-05-14",
+  "parties": [
+    {
+      "name": "Daniel Bertran",
+      "role": "grantor",
+      "is_entity": false,
+      "capacity": null
+    },
+    {
+      "name": "Sarah Jane",
+      "role": "grantor",
+      "is_entity": false,
+      "capacity": "wife of Daniel Bertran"
+    },
+    {
+      "name": "Alfred A. Gordon",
+      "role": "grantee",
+      "is_entity": false,
+      "capacity": "widower"
+    },
+    {
+      "name": "J. N. Nelson",
+      "role": "trustee",
+      "is_entity": false,
+      "capacity": "Probate Judge"
+    }
+  ],
+  "chain_of_title": [
+    {
+      "instrument_type": "warranty_deed",
+      "grantor": ["Daniel Bertran", "Sarah Jane"],
+      "grantee": ["Alfred A. Gordon"],
+      "instrument_date": "1875-12-22",
+      "recorded_date": null,
+      "book": null,
+      "page": null,
+      "instrument_number": "1996-019-023",
+      "consideration": null,
+      "source": {
+        "doc_id": "fromthepage_1875_handwritten_deed",
+        "page": 2,
+        "char_span": [0, 170],
+        "snippet": "THIS DEED, Made this 22 day of Dec. 1875 by Daniel Bertran and wife Sarah Jane ... to Alfred A. Gordon..."
+      }
+    }
+  ],
+  "has_recording_stamp": true,
+  "notarized": null,
+  "extraction_warnings": [
+    "Gold label is based on the public FromThePage human transcription; the downloaded PDF itself is handwritten and should route through OCR/VLM fallback.",
+    "Only the visible public transcription was used; no legal description or consideration appears in the visible transcription excerpt.",
+    "J. N. Nelson is captured as a probate official using the closest available PartyParty role because the schema does not include a judge/notary role."
+  ]
+}
