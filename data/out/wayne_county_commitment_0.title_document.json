@@ -1,0 +1,54 @@
+{
+  "doc_id": "wayne_county_commitment_0",
+  "doc_type": "title_commitment",
+  "file_path": "data\\raw\\commitment\\wayne_county_commitment_0.pdf",
+  "page_count": 7,
+  "parsed_at": "2026-05-14",
+  "effective_date": null,
+  "proposed_insured": null,
+  "estate_or_interest": null,
+  "vesting": [
+    {
+      "name": "Sam Seller",
+      "role": "owner",
+      "is_entity": false,
+      "capacity": null
+    }
+  ],
+  "policy_amount": {
+    "value": "2000000",
+    "confidence": 0.55,
+    "source": {
+      "doc_id": "wayne_county_commitment_0",
+      "page": 1,
+      "char_span": [
+        13719,
+        13729
+      ],
+      "snippet": "$2,000,000"
+    }
+  },
+  "legal_description": null,
+  "parties": [
+    {
+      "name": "Sam Seller",
+      "role": "owner",
+      "is_entity": false,
+      "capacity": null
+    }
+  ],
+  "chain_of_title": [],
+  "open_liens": [],
+  "released_liens": [],
+  "easements": [],
+  "restrictions": [],
+  "taxes": [],
+  "schedule_b_requirements": [],
+  "schedule_b_exceptions": [],
+  "survey_matters": [],
+  "has_recording_stamp": true,
+  "notarized": null,
+  "extraction_warnings": [
+    "Heuristic extractor used because no generated BAML client/API result or gold fixture was available."
+  ]
+}
