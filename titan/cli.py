@@ -7,9 +7,13 @@ import asyncio
 import json
 from pathlib import Path
 
+from titan.index.chunker import chunk_title_document
+from titan.index.embed import embed_chunks
+from titan.index.qdrant_store import HybridChunkStore
 from titan.ingest.extract import extract_title_document
 from titan.ingest.ocr import parse_document
 from titan.persist.sqlite import persist_parsed_doc, persist_title_document
+from titan.retrieve.hybrid import HybridRetriever
 from titan.schemas import TitleDocument
 
 
@@ -34,12 +38,20 @@ def main() -> None:
     demo.add_argument("--sqlite", default="data/titan.db")
     demo.add_argument("paths", nargs="*")
 
+    index_query = subparsers.add_parser("index-query", help="Build a local hybrid index and run a checkpoint query.")
+    index_query.add_argument("--docs-dir", default="data/out")
+    index_query.add_argument("--query", default="Who is the vested owner?")
+    index_query.add_argument("--top-k", type=int, default=5)
+    index_query.add_argument("--qdrant-url", default=None)
+
     args = parser.parse_args()
     if args.command == "ingest":
         asyncio.run(_run_one(Path(args.path), Path(args.out_dir), Path(args.sqlite)))
     elif args.command == "demo-ingest":
         paths = [Path(path) for path in (args.paths or DEFAULT_DEMO_DOCS)]
         asyncio.run(_run_many(paths, Path(args.out_dir), Path(args.sqlite)))
+    elif args.command == "index-query":
+        asyncio.run(_run_index_query(Path(args.docs_dir), args.query, args.top_k, args.qdrant_url))
 
 
 async def _run_many(paths: list[Path], out_dir: Path, sqlite_path: Path) -> None:
@@ -87,6 +99,81 @@ def _reasonable_diff(gold: dict, produced: dict) -> dict[str, object]:
         "changed_fields": changed,
         "passes": len(changed) <= 1,
     }
+
+
+async def _run_index_query(docs_dir: Path, query: str, top_k: int, qdrant_url: str | None) -> None:
+    documents = [
+        TitleDocument.model_validate_json(path.read_text(encoding="utf-8"))
+        for path in sorted(docs_dir.glob("*.title_document.json"))
+    ]
+    if not documents:
+        raise SystemExit(f"No title document JSON files found in {docs_dir}")
+
+    chunks = []
+    for document in documents:
+        markdown = _read_markdown_for(document)
+        chunks.extend(await chunk_title_document(document, markdown))
+
+    embedded, bm25, dense_embedder = embed_chunks(chunks)
+    store = HybridChunkStore(qdrant_url=qdrant_url)
+    store.upsert(embedded, bm25)
+    retriever = HybridRetriever(store, dense_embedder, bm25)
+    hits = await retriever.retrieve(query, top_k=top_k)
+
+    print(
+        json.dumps(
+            {
+                "query": query,
+                "chunk_count": len(chunks),
+                "dense_backend": dense_embedder.backend,
+                "collection": store.collection_name,
+                "qdrant_mirrored": store.qdrant_mirrored,
+                "hits": [
+                    {
+                        "rank": hit.rank,
+                        "score": round(hit.score, 4),
+                        "source": hit.source,
+                        "chunk_id": hit.chunk.chunk_id,
+                        "doc_id": hit.chunk.doc_id,
+                        "doc_type": hit.chunk.doc_type,
+                        "provenance": hit.chunk.provenance.model_dump(mode="json"),
+                        "text": hit.chunk.text[:1200],
+                    }
+                    for hit in hits
+                ],
+            },
+            indent=2,
+        )
+    )
+
+
+def _read_markdown_for(document: TitleDocument) -> str:
+    path = Path(document.file_path)
+    if path.exists() and path.suffix.lower() == ".pdf":
+        try:
+            import pdfplumber
+
+            with pdfplumber.open(path) as pdf:
+                pages = []
+                for index, page in enumerate(pdf.pages, start=1):
+                    pages.append(f"## Page {index}\n\n{page.extract_text() or ''}")
+                return "\n\n".join(pages)
+        except Exception:
+            pass
+
+    return _document_to_markdown(document)
+
+
+def _document_to_markdown(document: TitleDocument) -> str:
+    return "\n".join(
+        [
+            f"# {document.doc_id}",
+            f"Document type: {document.doc_type}",
+            "Vesting: " + ", ".join(party.name for party in document.vesting),
+            "Parties: " + ", ".join(f"{party.name} ({party.role})" for party in document.parties),
+            "Warnings: " + "; ".join(document.extraction_warnings),
+        ]
+    )
 
 
 if __name__ == "__main__":
