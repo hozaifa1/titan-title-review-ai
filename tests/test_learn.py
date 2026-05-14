@@ -231,7 +231,7 @@ async def test_orchestrator_injects_rules_into_offline_draft(tmp_path: Path) -> 
                 matter_id="m1",
                 section_name="s4_open_encumbrances_and_liens",
                 field_path="summary[0].text",
-                before="Lien exists.",
+                before="The source extraction identifies 0 open lien or encumbrance record(s).",
                 after="Open mortgage recorded at Book 12, Page 34.",
                 edit_type="citation_fix",
             )

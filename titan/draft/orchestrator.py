@@ -429,7 +429,7 @@ def _filter_groundable_edits(events: list[EditEvent], hits: list[SearchHit]) -> 
             grounded.append(event)
             continue
         overlap = len(after_tokens & context_tokens) / len(after_tokens)
-        if overlap >= 0.4:
+        if overlap >= 0.25:
             grounded.append(event)
     return grounded
 
