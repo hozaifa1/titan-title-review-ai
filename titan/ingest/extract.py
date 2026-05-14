@@ -281,7 +281,11 @@ def _is_name_like(name: str) -> bool:
         return False
     if name[0].islower():
         return False
-    if re.search(r"\b(first page|closing|policy|exception|underwriter|guidelines|satisfaction|facts)\b", name, re.IGNORECASE):
+    if re.search(
+        r"\b(first page|closing|policy|exception|underwriter|guidelines|satisfaction|facts|alta licensees)\b",
+        name,
+        re.IGNORECASE,
+    ):
         return False
     return True
 

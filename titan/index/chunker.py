@@ -119,14 +119,19 @@ def _heuristic_context(chunk: str, title_document: TitleDocument) -> str:
 def _structured_field_chunks(title_document: TitleDocument, start_index: int) -> list[Chunk]:
     chunks: list[Chunk] = []
     for offset, party in enumerate(title_document.vesting):
-        text = f"Schedule A vested owner: {party.name}. Role: {party.role}."
+        if party.role == "owner":
+            text = f"Schedule A vested owner: {party.name}. Role: owner."
+            context = f"This chunk summarizes Schedule A vesting for {title_document.doc_id}."
+        else:
+            text = f"Schedule A vesting party: {party.name}. Role: {party.role}."
+            context = f"This chunk summarizes a Schedule A party for {title_document.doc_id}."
         chunks.append(
             Chunk(
                 chunk_id=_chunk_id(title_document.doc_id, start_index + offset, text),
                 doc_id=title_document.doc_id,
                 doc_type=title_document.doc_type,
                 text=text,
-                contextual_text=f"This chunk summarizes Schedule A vesting for {title_document.doc_id}.\n\n{text}",
+                contextual_text=f"{context}\n\n{text}",
                 provenance=Provenance(doc_id=title_document.doc_id, page=1, char_span=None, snippet=text),
                 metadata={"field": "vesting"},
             )

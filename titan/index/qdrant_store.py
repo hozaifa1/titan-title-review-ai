@@ -14,6 +14,7 @@ class HybridChunkStore:
     The in-process path is the deterministic checkpoint backend. If
     `qdrant-client` is installed and a URL is supplied, the same payloads are
     mirrored to a Qdrant collection with named vectors `dense` and `sparse`.
+    Use ``qdrant_url=":memory:"`` for a no-Docker verification backend.
     """
 
     def __init__(self, collection_name: str = "title_chunks", qdrant_url: str | None = None) -> None:
@@ -53,10 +54,16 @@ class HybridChunkStore:
             from qdrant_client import QdrantClient  # type: ignore[import-not-found]
             from qdrant_client.http.models import Distance, PointStruct, VectorParams  # type: ignore[import-not-found]
 
-            client = QdrantClient(url=self.qdrant_url)
+            client = (
+                QdrantClient(location=":memory:")
+                if self.qdrant_url == ":memory:"
+                else QdrantClient(url=self.qdrant_url)
+            )
             dense_size = len(self.embedded[0].dense) if self.embedded else 1
             sparse_size = len(self.embedded[0].sparse) if self.embedded else 1
-            client.recreate_collection(
+            if client.collection_exists(self.collection_name):
+                client.delete_collection(self.collection_name)
+            client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config={
                     "dense": VectorParams(size=dense_size, distance=Distance.COSINE),

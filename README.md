@@ -30,6 +30,13 @@ docker compose up -d qdrant
 python -m titan.cli index-query --query "Who is the vested owner?" --top-k 5 --qdrant-url http://localhost:6333
 ```
 
+If Docker is not running, verify the same named-vector mirror path with
+Qdrant's in-memory backend:
+
+```powershell
+python -m titan.cli index-query --query "Who is the vested owner?" --top-k 5 --qdrant-url :memory:
+```
+
 The `title_chunks` collection is created with two named vectors:
 
 - `dense`

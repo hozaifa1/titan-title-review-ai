@@ -206,3 +206,4 @@ titandb.sqlite
 edit_events.db
 rules_*.yaml
 *.pdf
+start_docker_and_qdrant.ps1
