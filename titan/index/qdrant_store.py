@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from titan.index.embed import SimpleBM25, cosine
 from titan.index.models import EmbeddedChunk, SearchHit
 
@@ -19,7 +21,7 @@ class HybridChunkStore:
         self.qdrant_url = qdrant_url
         self.embedded: list[EmbeddedChunk] = []
         self.bm25: SimpleBM25 | None = None
-        self._qdrant = None
+        self._qdrant: Any | None = None
 
     @property
     def qdrant_mirrored(self) -> bool:

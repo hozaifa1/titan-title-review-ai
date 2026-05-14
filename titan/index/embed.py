@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -26,15 +27,18 @@ class DenseEmbedder:
         self.model_name = model_name
         self.fallback_dim = fallback_dim
         self._model = None
-        try:
-            from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]
+        if os.getenv("TITAN_LOCAL_MODELS") == "1":
+            try:
+                from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]
 
-            self._model = SentenceTransformer(model_name)
-            self.dimension = int(self._model.get_sentence_embedding_dimension() or fallback_dim)
-            self.backend = model_name
-        except Exception:
-            self.dimension = fallback_dim
-            self.backend = "hashing-fallback"
+                self._model = SentenceTransformer(model_name)
+                self.dimension = int(self._model.get_sentence_embedding_dimension() or fallback_dim)
+                self.backend = model_name
+                return
+            except Exception:
+                pass
+        self.dimension = fallback_dim
+        self.backend = "hashing-fallback"
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         if self._model is not None:

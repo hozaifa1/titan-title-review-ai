@@ -104,7 +104,6 @@ log.txt
 
 # Environment & Config
 .env
-.env.example
 .env.local
 .env.*.local
 credentials.json
@@ -168,7 +167,6 @@ Thumbs.db
 desktop.ini
 
 # Docker (if using)
-.dockerignore
 docker-compose.override.yml
 
 # Node/Frontend (if applicable)

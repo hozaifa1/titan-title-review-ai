@@ -1,0 +1,10 @@
+.git
+.mypy_cache
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+.env
+qdrant_storage
+data/titan.db
+cache

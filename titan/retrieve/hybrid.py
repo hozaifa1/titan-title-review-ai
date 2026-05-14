@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections import defaultdict
 
 from titan.index.embed import DenseEmbedder, SimpleBM25
@@ -53,13 +54,14 @@ class _Reranker:
     def __init__(self, model_name: str = "BAAI/bge-reranker-v2-m3") -> None:
         self.backend = "lexical-fallback"
         self._model = None
-        try:
-            from sentence_transformers import CrossEncoder  # type: ignore[import-not-found]
+        if os.getenv("TITAN_LOCAL_MODELS") == "1":
+            try:
+                from sentence_transformers import CrossEncoder  # type: ignore[import-not-found]
 
-            self._model = CrossEncoder(model_name)
-            self.backend = model_name
-        except Exception:
-            self._model = None
+                self._model = CrossEncoder(model_name)
+                self.backend = model_name
+            except Exception:
+                self._model = None
 
     def rerank(self, query: str, hits: list[SearchHit], top_k: int) -> list[SearchHit]:
         if self._model is not None and hits:
