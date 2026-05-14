@@ -1,0 +1,19 @@
+section: s8_taxes_and_survey_matters
+version: 1
+created_at: '2026-05-14T08:38:29.653111Z'
+generated_from_edit_ids:
+- e_cbef85a5af9b
+rules:
+- id: r1
+  text: 'Prefer terminology added by reviewers: delinquent, confirm, taxes.'
+  trigger_edit_types:
+  - wording
+  - style
+  confidence: 0.6
+- id: r4
+  text: Surface gaps and missing facts as explicit bullet findings instead of omitting
+    them.
+  trigger_edit_types:
+  - addition
+  confidence: 0.7
+superseded: []

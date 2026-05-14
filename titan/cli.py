@@ -1,20 +1,36 @@
 """Titan command-line entrypoints."""
 
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from titan.draft.orchestrator import DraftOrchestrator
 from titan.index.chunker import chunk_title_document
-from titan.index.embed import embed_chunks
+from titan.index.embed import DenseEmbedder, embed_chunks
 from titan.index.qdrant_store import HybridChunkStore
 from titan.ingest.extract import extract_title_document
 from titan.ingest.ocr import parse_document
-from titan.persist.sqlite import persist_parsed_doc, persist_title_document
+from titan.learn.diff import diff_summaries
+from titan.learn.distill import RuleStore, distill_rules_for_section
+from titan.learn.memory import EditMemory
+from titan.persist.sqlite import (
+    load_edit_events,
+    persist_edit_events,
+    persist_parsed_doc,
+    persist_title_document,
+)
 from titan.retrieve.hybrid import HybridRetriever
-from titan.schemas import TitleDocument
+from titan.schemas import TitleDocument, TitleReviewSummary
 
 
 DEFAULT_DEMO_DOCS = [
@@ -44,6 +60,35 @@ def main() -> None:
     index_query.add_argument("--top-k", type=int, default=5)
     index_query.add_argument("--qdrant-url", default=None)
 
+    draft = subparsers.add_parser("draft", help="Generate a cited TitleReviewSummary for one PDF or TitleDocument JSON.")
+    draft.add_argument("path")
+    draft.add_argument("--out-dir", default="data/out")
+    draft.add_argument("--sqlite", default="data/titan.db")
+    draft.add_argument("--qdrant-url", default=None)
+    draft.add_argument("--rules-dir", default="rules")
+    draft.add_argument("--with-learning", action="store_true", help="Inject distilled rules and past edits into the prompt.")
+    draft.add_argument("--suffix", default="TitleReviewSummary")
+
+    learn_capture = subparsers.add_parser(
+        "learn-capture",
+        help="Diff a baseline draft JSON against an operator-edited draft JSON; persist EditEvents.",
+    )
+    learn_capture.add_argument("baseline")
+    learn_capture.add_argument("edited")
+    learn_capture.add_argument("--sqlite", default="data/titan.db")
+    learn_capture.add_argument("--qdrant-url", default=None)
+    learn_capture.add_argument("--operator-id", default=None)
+    learn_capture.add_argument("--operator-note", default=None)
+
+    learn_distill = subparsers.add_parser(
+        "learn-distill",
+        help="Run the LLM-as-judge rule distillation for one section (or all).",
+    )
+    learn_distill.add_argument("--sqlite", default="data/titan.db")
+    learn_distill.add_argument("--rules-dir", default="rules")
+    learn_distill.add_argument("--section", default=None, help="Section field_name (e.g. s4_open_encumbrances_and_liens). Default: all sections with edits.")
+    learn_distill.add_argument("--window", type=int, default=20)
+
     args = parser.parse_args()
     if args.command == "ingest":
         asyncio.run(_run_one(Path(args.path), Path(args.out_dir), Path(args.sqlite)))
@@ -52,6 +97,36 @@ def main() -> None:
         asyncio.run(_run_many(paths, Path(args.out_dir), Path(args.sqlite)))
     elif args.command == "index-query":
         asyncio.run(_run_index_query(Path(args.docs_dir), args.query, args.top_k, args.qdrant_url))
+    elif args.command == "draft":
+        asyncio.run(
+            _run_draft(
+                Path(args.path),
+                Path(args.out_dir),
+                Path(args.sqlite),
+                args.qdrant_url,
+                Path(args.rules_dir),
+                args.with_learning,
+                args.suffix,
+            )
+        )
+    elif args.command == "learn-capture":
+        _run_learn_capture(
+            Path(args.baseline),
+            Path(args.edited),
+            Path(args.sqlite),
+            args.qdrant_url,
+            args.operator_id,
+            args.operator_note,
+        )
+    elif args.command == "learn-distill":
+        asyncio.run(
+            _run_learn_distill(
+                Path(args.sqlite),
+                Path(args.rules_dir),
+                args.section,
+                args.window,
+            )
+        )
 
 
 async def _run_many(paths: list[Path], out_dir: Path, sqlite_path: Path) -> None:
@@ -115,7 +190,7 @@ async def _run_index_query(docs_dir: Path, query: str, top_k: int, qdrant_url: s
         chunks.extend(await chunk_title_document(document, markdown))
 
     embedded, bm25, dense_embedder = embed_chunks(chunks)
-    store = HybridChunkStore(qdrant_url=qdrant_url)
+    store = HybridChunkStore(qdrant_url=qdrant_url or os.getenv("QDRANT_URL"), qdrant_api_key=os.getenv("QDRANT_API_KEY") or None)
     store.upsert(embedded, bm25)
     retriever = HybridRetriever(store, dense_embedder, bm25)
     hits = await retriever.retrieve(query, top_k=top_k)
@@ -145,6 +220,167 @@ async def _run_index_query(docs_dir: Path, query: str, top_k: int, qdrant_url: s
             indent=2,
         )
     )
+
+
+async def _run_draft(
+    path: Path,
+    out_dir: Path,
+    sqlite_path: Path,
+    qdrant_url: str | None,
+    rules_dir: Path,
+    with_learning: bool,
+    suffix: str,
+) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if path.suffix.lower() == ".json":
+        title_document = TitleDocument.model_validate_json(path.read_text(encoding="utf-8"))
+    else:
+        title_document = await _run_one(path, out_dir, sqlite_path)
+
+    markdown = _read_markdown_for(title_document)
+    chunks = await chunk_title_document(title_document, markdown)
+    embedded, bm25, dense_embedder = embed_chunks(chunks)
+    qdrant_target = qdrant_url or os.getenv("QDRANT_URL")
+    store = HybridChunkStore(qdrant_url=qdrant_target, qdrant_api_key=os.getenv("QDRANT_API_KEY") or None)
+    store.upsert(embedded, bm25)
+    retriever = HybridRetriever(store, dense_embedder, bm25)
+
+    edit_memory: EditMemory | None = None
+    rule_store: RuleStore | None = None
+    if with_learning:
+        rule_store = RuleStore(rules_dir)
+        edit_memory = EditMemory(
+            qdrant_url=qdrant_target,
+            qdrant_api_key=os.getenv("QDRANT_API_KEY") or None,
+            embedder=dense_embedder,
+        )
+        events = load_edit_events(sqlite_path)
+        if events:
+            edit_memory.add_many(events)
+
+    summary = await DraftOrchestrator(
+        retriever,
+        edit_memory=edit_memory,
+        rule_store=rule_store,
+    ).generate(title_document)
+
+    output_path = out_dir / f"{summary.matter_id}.{suffix}.json"
+    output_path.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
+    print(
+        json.dumps(
+            {
+                "input": str(path),
+                "output": str(output_path),
+                "matter_id": summary.matter_id,
+                "sections": len([name for name in type(summary).model_fields if name.startswith("s")]),
+                "model": summary.model,
+                "rules_version": summary.rules_version,
+                "with_learning": with_learning,
+                "qdrant_mirrored": store.qdrant_mirrored,
+                "edit_memory_active": bool(edit_memory and edit_memory.qdrant_active),
+                "edit_memory_size": len(edit_memory) if edit_memory else 0,
+            },
+            indent=2,
+        )
+    )
+    _flush_langfuse()
+
+
+def _run_learn_capture(
+    baseline_path: Path,
+    edited_path: Path,
+    sqlite_path: Path,
+    qdrant_url: str | None,
+    operator_id: str | None,
+    operator_note: str | None,
+) -> None:
+    baseline = TitleReviewSummary.model_validate_json(baseline_path.read_text(encoding="utf-8"))
+    edited = TitleReviewSummary.model_validate_json(edited_path.read_text(encoding="utf-8"))
+    events = diff_summaries(baseline, edited, operator_id=operator_id, operator_note=operator_note)
+    if not events:
+        print(json.dumps({"events": 0, "message": "No edits detected."}, indent=2))
+        return
+    persist_edit_events(events, sqlite_path)
+    embedder = DenseEmbedder()
+    memory = EditMemory(
+        qdrant_url=qdrant_url or os.getenv("QDRANT_URL"),
+        qdrant_api_key=os.getenv("QDRANT_API_KEY") or None,
+        embedder=embedder,
+    )
+    memory.add_many(events)
+    print(
+        json.dumps(
+            {
+                "events": len(events),
+                "qdrant_active": memory.qdrant_active,
+                "by_section": _events_by_section(events),
+                "by_type": _events_by_type(events),
+            },
+            indent=2,
+        )
+    )
+
+
+async def _run_learn_distill(
+    sqlite_path: Path,
+    rules_dir: Path,
+    section: str | None,
+    window: int,
+) -> None:
+    rule_store = RuleStore(rules_dir)
+    sections = [section] if section else _sections_with_edits(sqlite_path)
+    if not sections:
+        print(json.dumps({"sections": 0, "message": "No edits found in SQLite."}, indent=2))
+        return
+
+    output: list[dict[str, object]] = []
+    for sec in sections:
+        events = load_edit_events(sqlite_path, section_name=sec)
+        if not events:
+            continue
+        result = await distill_rules_for_section(sec, events, rule_store, window=window)
+        output.append(
+            {
+                "section": sec,
+                "version": result.rule_set.version,
+                "used_gemini": result.used_gemini,
+                "rules": len(result.rule_set.rules),
+                "path": str(rule_store.path_for(sec)),
+            }
+        )
+    print(json.dumps({"distilled": output, "rules_version": rule_store.aggregated_version_tag()}, indent=2))
+
+
+def _sections_with_edits(sqlite_path: Path) -> list[str]:
+    events = load_edit_events(sqlite_path)
+    seen: list[str] = []
+    for event in events:
+        if event.section_name not in seen:
+            seen.append(event.section_name)
+    return seen
+
+
+def _events_by_section(events: list) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for event in events:
+        out[event.section_name] = out.get(event.section_name, 0) + 1
+    return out
+
+
+def _events_by_type(events: list) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for event in events:
+        out[event.edit_type] = out.get(event.edit_type, 0) + 1
+    return out
+
+
+def _flush_langfuse() -> None:
+    try:
+        from langfuse import get_client  # type: ignore[import-not-found]
+
+        get_client().flush()
+    except Exception:
+        pass
 
 
 def _read_markdown_for(document: TitleDocument) -> str:

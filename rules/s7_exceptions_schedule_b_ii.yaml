@@ -1,0 +1,19 @@
+section: s7_exceptions_schedule_b_ii
+version: 1
+created_at: '2026-05-14T08:38:28.973365Z'
+generated_from_edit_ids:
+- e_e710b3a0b980
+rules:
+- id: r1
+  text: 'Prefer terminology added by reviewers: enumerate, standard, survey.'
+  trigger_edit_types:
+  - wording
+  - style
+  confidence: 0.6
+- id: r3
+  text: Verify named parties, dates, and dollar amounts against the source chunk before
+    asserting them.
+  trigger_edit_types:
+  - fact_correction
+  confidence: 0.8
+superseded: []

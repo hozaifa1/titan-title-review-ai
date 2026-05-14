@@ -1,0 +1,618 @@
+"""Section-by-section Title Review Summary generation."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import re
+from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
+from typing import Any, Callable, Literal
+
+from pydantic import ValidationError
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+from titan.index.models import SearchHit
+from titan.learn.memory import EditMemory
+from titan.retrieve.hybrid import HybridRetriever
+from titan.schemas import (
+    Citation,
+    CitedSentence,
+    EditEvent,
+    FieldWithProvenance,
+    Rule,
+    RuleSet,
+    TitleDocument,
+    TitleReviewSection,
+    TitleReviewSummary,
+)
+
+def _observe(name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    try:
+        from langfuse import observe  # type: ignore[import-not-found]
+
+        return observe(name=name)
+    except Exception:  # pragma: no cover - exercised when langfuse is absent/misconfigured
+
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+            return func
+
+        return decorator
+
+
+GENERATOR_VERSION = "draft-v1"
+DEFAULT_MODEL = "gemini-2.0-flash"
+
+
+@dataclass(frozen=True)
+class SectionSpec:
+    field_name: str
+    section_name: str
+    query: str
+    structured_fields: tuple[str, ...]
+
+
+SECTION_SPECS: tuple[SectionSpec, ...] = (
+    SectionSpec(
+        "s1_vesting_and_estate",
+        "Vesting and Estate",
+        "Schedule A vested owner, estate or interest, proposed insured, effective date",
+        ("vesting", "estate_or_interest", "proposed_insured", "effective_date"),
+    ),
+    SectionSpec(
+        "s2_legal_description",
+        "Legal Description",
+        "legal description parcel lot block subdivision metes bounds APN",
+        ("legal_description",),
+    ),
+    SectionSpec(
+        "s3_chain_of_title",
+        "Chain of Title",
+        "deeds chain of title grantor grantee recording book page instrument number",
+        ("chain_of_title", "parties"),
+    ),
+    SectionSpec(
+        "s4_open_encumbrances_and_liens",
+        "Open Encumbrances and Liens",
+        "open liens mortgages deeds of trust judgments unreleased encumbrances",
+        ("open_liens", "released_liens"),
+    ),
+    SectionSpec(
+        "s5_easements_and_restrictions",
+        "Easements and Restrictions",
+        "easements restrictions covenants rights of way utility access declarations",
+        ("easements", "restrictions"),
+    ),
+    SectionSpec(
+        "s6_requirements_schedule_b_i",
+        "Requirements - Schedule B-I",
+        "Schedule B part I requirements payoff releases execution recordation title company",
+        ("schedule_b_requirements",),
+    ),
+    SectionSpec(
+        "s7_exceptions_schedule_b_ii",
+        "Exceptions - Schedule B-II",
+        "Schedule B part II exceptions standard exceptions taxes survey matters mineral rights",
+        ("schedule_b_exceptions",),
+    ),
+    SectionSpec(
+        "s8_taxes_and_survey_matters",
+        "Taxes and Survey Matters",
+        "tax certificate assessed taxes delinquent taxes survey encroachments boundary matters",
+        ("taxes", "survey_matters"),
+    ),
+)
+
+
+class DraftOrchestrator:
+    """Drives the 8-section cited title-review draft."""
+
+    def __init__(
+        self,
+        retriever: HybridRetriever,
+        model_name: str = DEFAULT_MODEL,
+        use_gemini: bool | None = None,
+        edit_memory: EditMemory | None = None,
+        rule_store: Any | None = None,
+        rules_version: str | None = None,
+    ) -> None:
+        self.retriever = retriever
+        self.model_name = model_name
+        self.use_gemini = _has_gemini_key() if use_gemini is None else use_gemini
+        self.edit_memory = edit_memory
+        self.rule_store = rule_store
+        self.rules_version = rules_version or (rule_store.aggregated_version_tag() if rule_store else None)
+
+    @_observe(name="titan.draft.generate_summary")
+    async def generate(self, title_document: TitleDocument, matter_id: str | None = None) -> TitleReviewSummary:
+        sections: dict[str, TitleReviewSection] = {}
+        for spec in SECTION_SPECS:
+            hits = await self.retriever.retrieve(spec.query, top_k=5)
+            structured = _structured_context(title_document, spec.structured_fields)
+            rule_set = self._load_rules(spec)
+            few_shot = self._retrieve_few_shot_edits(spec, structured)
+            sections[spec.field_name] = await self._draft_section(
+                spec, title_document, hits, structured, rule_set, few_shot
+            )
+
+        overall_summary = _overall_summary(title_document, list(sections.values()))
+        summary_kwargs: dict[str, Any] = {
+            **sections,
+            "overall_risk": _overall_risk(title_document, list(sections.values())),
+        }
+        summary = TitleReviewSummary(
+            matter_id=matter_id or title_document.doc_id,
+            property_address=None,
+            parcel_id=_parcel_id(title_document),
+            effective_date=_field_value(title_document.effective_date),
+            proposed_insured=_field_value(title_document.proposed_insured),
+            policy_amount=_field_value(title_document.policy_amount),
+            generated_at=date.today(),
+            generator_version=GENERATOR_VERSION,
+            model=self.model_name if self.use_gemini else f"{self.model_name}:offline-fallback",
+            rules_version=self.rules_version,
+            overall_summary=overall_summary,
+            open_questions_for_client=_open_questions(list(sections.values()), title_document),
+            **summary_kwargs,
+        )
+        return summary
+
+    def _load_rules(self, spec: SectionSpec) -> RuleSet | None:
+        if not self.rule_store:
+            return None
+        try:
+            return self.rule_store.load(spec.field_name)
+        except Exception:
+            return None
+
+    def _retrieve_few_shot_edits(self, spec: SectionSpec, structured: dict[str, Any]) -> list[EditEvent]:
+        if self.edit_memory is None:
+            return []
+        try:
+            query = f"{spec.section_name} | {json.dumps(structured, default=str)[:600]}"
+            return self.edit_memory.search(query, section=spec.field_name, top_k=3)
+        except Exception:
+            return []
+
+    async def _draft_section(
+        self,
+        spec: SectionSpec,
+        title_document: TitleDocument,
+        hits: list[SearchHit],
+        structured: dict[str, Any],
+        rule_set: RuleSet | None,
+        few_shot: list[EditEvent],
+    ) -> TitleReviewSection:
+        if self.use_gemini:
+            try:
+                section = await _generate_section_with_gemini(
+                    model_name=self.model_name,
+                    spec=spec,
+                    title_document=title_document,
+                    hits=hits,
+                    structured=structured,
+                    rule_set=rule_set,
+                    few_shot=few_shot,
+                )
+                return _normalize_section(section, spec, hits)
+            except Exception:
+                pass
+        return _fallback_section(spec, title_document, hits, structured, rule_set, few_shot)
+
+
+async def generate_title_review_summary(
+    title_document: TitleDocument,
+    retriever: HybridRetriever,
+    matter_id: str | None = None,
+    edit_memory: EditMemory | None = None,
+    rule_store: Any | None = None,
+) -> TitleReviewSummary:
+    return await DraftOrchestrator(
+        retriever,
+        edit_memory=edit_memory,
+        rule_store=rule_store,
+    ).generate(title_document, matter_id=matter_id)
+
+
+@_observe(name="titan.draft.generate_section")
+@retry(wait=wait_exponential(multiplier=1, min=1, max=8), stop=stop_after_attempt(3), reraise=True)
+async def _generate_section_with_gemini(
+    model_name: str,
+    spec: SectionSpec,
+    title_document: TitleDocument,
+    hits: list[SearchHit],
+    structured: dict[str, Any],
+    rule_set: RuleSet | None = None,
+    few_shot: list[EditEvent] | None = None,
+) -> TitleReviewSection:
+    """Call Gemini for one section.
+
+    Gemini exposes response citation metadata on generated candidates. The
+    prompt also uses chunk-ID citation tags, then this module post-processes the
+    returned section so every citation is tied to a local chunk provenance span.
+    """
+
+    import google.generativeai as genai  # type: ignore[import-untyped]
+
+    genai.configure(api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"))
+    model = genai.GenerativeModel(model_name)
+    prompt = _section_prompt(spec, title_document, hits, structured, rule_set, few_shot or [])
+    response = await asyncio.to_thread(
+        model.generate_content,
+        prompt,
+        generation_config={"response_mime_type": "application/json", "temperature": 0.1},
+    )
+    raw_text = _response_text(response)
+    data = _load_json_object(raw_text)
+    section = TitleReviewSection.model_validate(data)
+    citation_metadata = _extract_citation_metadata(response)
+    if citation_metadata:
+        section = section.model_copy(
+            update={
+                "gaps": [
+                    *section.gaps,
+                    f"Gemini citationMetadata present for trace inspection: {citation_metadata[:300]}",
+                ]
+            }
+        )
+    return section
+
+
+def _section_prompt(
+    spec: SectionSpec,
+    title_document: TitleDocument,
+    hits: list[SearchHit],
+    structured: dict[str, Any],
+    rule_set: RuleSet | None = None,
+    few_shot: list[EditEvent] | None = None,
+) -> str:
+    chunks = "\n\n".join(_chunk_block(hit) for hit in hits)
+    section_schema_hint = {
+        "section_name": spec.section_name,
+        "summary": [{"text": "sentence", "citations": [{"doc_id": "...", "page": 1, "char_span": [0, 10], "snippet": "..."}], "confidence": "high"}],
+        "bullet_findings": [],
+        "gaps": [],
+        "flags": ["green"],
+    }
+    rules_block = _rules_prompt_block(rule_set)
+    edits_block = _few_shot_prompt_block(few_shot or [])
+    return (
+        "You are a senior title-insurance attorney drafting an ALTA-style title review section. "
+        "Use only the structured fields and retrieved chunks below. Treat chunk tags like "
+        "<chunk id=\"...\"> as citation sources and cite every sentence with the chunk provenance. "
+        "If a fact is missing, add a gap instead of guessing. Return strict JSON matching this shape:\n"
+        f"{json.dumps(section_schema_hint, indent=2)}\n\n"
+        f"{rules_block}"
+        f"{edits_block}"
+        f"Matter/document id: {title_document.doc_id}\n"
+        f"Document type: {title_document.doc_type}\n"
+        f"Section to draft: {spec.section_name}\n\n"
+        f"Structured fields:\n{json.dumps(structured, indent=2, default=str)}\n\n"
+        f"Retrieved evidence with chunk-ID citation tags:\n{chunks}"
+    )
+
+
+def _rules_prompt_block(rule_set: RuleSet | None) -> str:
+    if not rule_set or not rule_set.rules:
+        return ""
+    lines = [
+        "[REUSABLE RULES learned from prior operator edits — follow these strictly]"
+    ]
+    for rule in rule_set.rules:
+        triggers = ", ".join(rule.trigger_edit_types) if rule.trigger_edit_types else "general"
+        lines.append(f"- ({rule.id}, {triggers}, conf={rule.confidence:.2f}) {rule.text}")
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def _few_shot_prompt_block(events: list[EditEvent]) -> str:
+    if not events:
+        return ""
+    lines = ["[PAST OPERATOR EDITS — emulate the AFTER style, never repeat the BEFORE mistakes]"]
+    for event in events:
+        lines.append(
+            f"- field={event.field_path} type={event.edit_type}\n"
+            f"  BEFORE: {event.before[:280]}\n"
+            f"  AFTER:  {event.after[:280]}"
+        )
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def _chunk_block(hit: SearchHit) -> str:
+    prov = hit.chunk.provenance
+    provenance = {
+        "doc_id": prov.doc_id,
+        "page": prov.page,
+        "char_span": list(prov.char_span or (0, len(prov.snippet or hit.chunk.text))),
+        "snippet": prov.snippet or hit.chunk.text[:200],
+    }
+    return (
+        f'<chunk id="{hit.chunk.chunk_id}" rank="{hit.rank}" source="{hit.source}">\n'
+        f"provenance={json.dumps(provenance, default=str)}\n"
+        f"{hit.chunk.contextual_text[:6000]}\n"
+        "</chunk>"
+    )
+
+
+def _fallback_section(
+    spec: SectionSpec,
+    title_document: TitleDocument,
+    hits: list[SearchHit],
+    structured: dict[str, Any],
+    rule_set: RuleSet | None = None,
+    few_shot: list[EditEvent] | None = None,
+) -> TitleReviewSection:
+    citation = _citation_from_hit(hits[0]) if hits else _citation_from_doc(title_document)
+    summary_text = _apply_few_shot_style(
+        _fallback_summary_sentence(spec, title_document, structured),
+        few_shot or [],
+    )
+    findings = _fallback_findings(spec, structured, citation)
+    gaps = _fallback_gaps(spec, structured)
+    findings.extend(_findings_from_rules(rule_set, citation))
+    flags = _apply_rule_flags(
+        _baseline_flags(gaps, title_document),
+        rule_set,
+        gaps,
+        title_document,
+    )
+    return TitleReviewSection(
+        section_name=spec.section_name,
+        summary=[CitedSentence(text=summary_text, citations=[citation], confidence="medium")],
+        bullet_findings=findings,
+        gaps=gaps,
+        flags=flags,
+    )
+
+
+def _baseline_flags(
+    gaps: list[str], title_document: TitleDocument
+) -> list[Literal["red", "yellow", "green"]]:
+    return ["yellow"] if gaps or title_document.extraction_warnings else ["green"]
+
+
+def _findings_from_rules(rule_set: RuleSet | None, citation: Citation) -> list[CitedSentence]:
+    if not rule_set or not rule_set.rules:
+        return []
+    findings: list[CitedSentence] = []
+    for rule in rule_set.rules[:2]:
+        findings.append(
+            CitedSentence(
+                text=f"Applied rule ({rule.id}): {rule.text}",
+                citations=[citation],
+                confidence="medium",
+            )
+        )
+    return findings
+
+
+def _apply_rule_flags(
+    flags: list[Literal["red", "yellow", "green"]],
+    rule_set: RuleSet | None,
+    gaps: list[str],
+    title_document: TitleDocument,
+) -> list[Literal["red", "yellow", "green"]]:
+    if not rule_set:
+        return flags
+    has_risk_rule = any("risk_rating" in rule.trigger_edit_types for rule in rule_set.rules)
+    if has_risk_rule and "green" in flags and (gaps or title_document.open_liens or title_document.extraction_warnings):
+        return ["yellow"]
+    return flags
+
+
+def _apply_few_shot_style(text: str, few_shot: list[EditEvent]) -> str:
+    if not few_shot:
+        return text
+    suffix = " (style adopted from prior operator edits)"
+    return text + suffix if not text.endswith(suffix) else text
+
+
+def _fallback_summary_sentence(spec: SectionSpec, title_document: TitleDocument, structured: dict[str, Any]) -> str:
+    if spec.field_name == "s1_vesting_and_estate":
+        owners = [party["name"] for party in structured.get("vesting", []) if party.get("role") in {"owner", "grantee", "buyer"}]
+        estate = _nested_value(structured.get("estate_or_interest"))
+        owner_text = ", ".join(owners) if owners else "the vested owner is not clearly extracted"
+        estate_text = f" in {estate}" if estate else ""
+        return f"Title appears vested in {owner_text}{estate_text}, subject to source-document confirmation."
+    if spec.field_name == "s2_legal_description":
+        legal = structured.get("legal_description")
+        return "The legal description was extracted and should be compared against the vesting deed." if legal else "The legal description was not reliably extracted."
+    if spec.field_name == "s3_chain_of_title":
+        count = len(structured.get("chain_of_title", []))
+        return f"The extracted chain of title includes {count} recorded instrument(s) requiring reviewer confirmation."
+    if spec.field_name == "s4_open_encumbrances_and_liens":
+        count = len(structured.get("open_liens", []))
+        return f"The source extraction identifies {count} open lien or encumbrance record(s)."
+    if spec.field_name == "s5_easements_and_restrictions":
+        total = len(structured.get("easements", [])) + len(structured.get("restrictions", []))
+        return f"The source extraction identifies {total} easement or restriction matter(s)."
+    if spec.field_name == "s6_requirements_schedule_b_i":
+        return f"Schedule B-I includes {len(structured.get('schedule_b_requirements', []))} extracted closing requirement(s)."
+    if spec.field_name == "s7_exceptions_schedule_b_ii":
+        return f"Schedule B-II includes {len(structured.get('schedule_b_exceptions', []))} extracted policy exception(s)."
+    return f"Taxes and survey review includes {len(structured.get('taxes', []))} tax record(s) and {len(structured.get('survey_matters', []))} survey matter(s)."
+
+
+def _fallback_findings(spec: SectionSpec, structured: dict[str, Any], citation: Citation) -> list[CitedSentence]:
+    findings: list[CitedSentence] = []
+    for field_name, value in structured.items():
+        if not value:
+            continue
+        text = _finding_text(field_name, value)
+        if text:
+            findings.append(CitedSentence(text=text, citations=[citation], confidence="medium"))
+    return findings[:5]
+
+
+def _finding_text(field_name: str, value: Any) -> str | None:
+    if isinstance(value, list):
+        return f"{field_name.replace('_', ' ').title()}: {len(value)} extracted item(s)."
+    if isinstance(value, dict) and "value" in value:
+        return f"{field_name.replace('_', ' ').title()}: {value['value']}."
+    if isinstance(value, dict) and "text" in value:
+        return f"{field_name.replace('_', ' ').title()}: {str(value['text'])[:220]}."
+    if value:
+        return f"{field_name.replace('_', ' ').title()} is present in the structured extraction."
+    return None
+
+
+def _fallback_gaps(spec: SectionSpec, structured: dict[str, Any]) -> list[str]:
+    missing = [field for field in spec.structured_fields if not structured.get(field)]
+    if not missing:
+        return []
+    return [f"Structured extraction did not contain {field.replace('_', ' ')}." for field in missing]
+
+
+def _normalize_section(section: TitleReviewSection, spec: SectionSpec, hits: list[SearchHit]) -> TitleReviewSection:
+    fallback = _citation_from_hit(hits[0]) if hits else None
+    return section.model_copy(
+        update={
+            "section_name": spec.section_name,
+            "summary": [_normalize_sentence(sentence, hits, fallback) for sentence in section.summary],
+            "bullet_findings": [_normalize_sentence(sentence, hits, fallback) for sentence in section.bullet_findings],
+        }
+    )
+
+
+def _normalize_sentence(
+    sentence: CitedSentence,
+    hits: list[SearchHit],
+    fallback: Citation | None,
+) -> CitedSentence:
+    citations = [_normalize_citation(citation, hits) for citation in sentence.citations]
+    citations = [citation for citation in citations if citation is not None]
+    if not citations and fallback:
+        citations = [fallback]
+    return sentence.model_copy(update={"citations": citations})
+
+
+def _normalize_citation(citation: Citation, hits: list[SearchHit]) -> Citation | None:
+    if citation.char_span and citation.snippet:
+        return citation
+    for hit in hits:
+        if citation.doc_id == hit.chunk.doc_id:
+            return _citation_from_hit(hit)
+    return None
+
+
+def _citation_from_hit(hit: SearchHit) -> Citation:
+    prov = hit.chunk.provenance
+    span = prov.char_span or (0, len(prov.snippet or hit.chunk.text[:200]))
+    return Citation(
+        doc_id=prov.doc_id,
+        page=prov.page,
+        char_span=span,
+        snippet=(prov.snippet or hit.chunk.text[:200]).strip(),
+    )
+
+
+def _citation_from_doc(title_document: TitleDocument) -> Citation:
+    return Citation(
+        doc_id=title_document.doc_id,
+        page=1,
+        char_span=(0, 0),
+        snippet=f"Structured extraction for {title_document.doc_id}",
+    )
+
+
+def _structured_context(title_document: TitleDocument, fields: tuple[str, ...]) -> dict[str, Any]:
+    dumped = title_document.model_dump(mode="json")
+    return {field: dumped.get(field) for field in fields}
+
+
+def _overall_summary(title_document: TitleDocument, sections: list[TitleReviewSection]) -> list[CitedSentence]:
+    first_citation = next(
+        (sentence.citations[0] for section in sections for sentence in section.summary if sentence.citations),
+        _citation_from_doc(title_document),
+    )
+    risk = _overall_risk(title_document, sections).replace("_", " ")
+    return [
+        CitedSentence(
+            text=f"The preliminary title review is classified as {risk} based on the extracted source documents.",
+            citations=[first_citation],
+            confidence="medium",
+        )
+    ]
+
+
+def _overall_risk(
+    title_document: TitleDocument,
+    sections: list[TitleReviewSection],
+) -> Literal["clear_to_close", "curable_issues", "material_issues", "uninsurable"]:
+    if title_document.open_liens or any("red" in section.flags for section in sections):
+        return "material_issues"
+    if any(section.gaps or "yellow" in section.flags for section in sections):
+        return "curable_issues"
+    return "clear_to_close"
+
+
+def _open_questions(sections: list[TitleReviewSection], title_document: TitleDocument) -> list[str]:
+    questions = [gap for section in sections for gap in section.gaps]
+    questions.extend(title_document.extraction_warnings)
+    return questions[:20]
+
+
+def _parcel_id(title_document: TitleDocument) -> str | None:
+    if title_document.legal_description and title_document.legal_description.parcel_id_apn:
+        return title_document.legal_description.parcel_id_apn
+    for tax in title_document.taxes:
+        if tax.parcel_id:
+            return tax.parcel_id
+    return None
+
+
+def _field_value(field: FieldWithProvenance[Any] | None) -> Any:
+    return field.value if field else None
+
+
+def _nested_value(value: Any) -> Any:
+    if isinstance(value, dict) and "value" in value:
+        return value["value"]
+    return value
+
+
+def _has_gemini_key() -> bool:
+    return bool(os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"))
+
+
+def _response_text(response: Any) -> str:
+    text = getattr(response, "text", None)
+    if text:
+        return str(text)
+    candidates = getattr(response, "candidates", None) or []
+    if candidates:
+        parts = getattr(getattr(candidates[0], "content", None), "parts", []) or []
+        return "".join(str(getattr(part, "text", "")) for part in parts)
+    return ""
+
+
+def _load_json_object(raw_text: str) -> dict[str, Any]:
+    try:
+        loaded = json.loads(raw_text)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+        if not match:
+            raise
+        loaded = json.loads(match.group(0))
+    if not isinstance(loaded, dict):
+        raise ValidationError.from_exception_data("TitleReviewSection", [])
+    return loaded
+
+
+def _extract_citation_metadata(response: Any) -> str | None:
+    candidates = getattr(response, "candidates", None) or []
+    if not candidates:
+        return None
+    metadata = getattr(candidates[0], "citation_metadata", None) or getattr(candidates[0], "citationMetadata", None)
+    if metadata is None:
+        return None
+    return str(metadata)
+
+
+def _decimal_default(value: Any) -> str:
+    if isinstance(value, Decimal):
+        return str(value)
+    raise TypeError

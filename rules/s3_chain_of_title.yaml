@@ -1,0 +1,19 @@
+section: s3_chain_of_title
+version: 1
+created_at: '2026-05-14T08:38:26.407651Z'
+generated_from_edit_ids:
+- e_917e9e373c5b
+rules:
+- id: r1
+  text: 'Prefer terminology added by reviewers: page, number, book.'
+  trigger_edit_types:
+  - wording
+  - style
+  confidence: 0.6
+- id: r2
+  text: Cite Book, Page, and Instrument Number for every recorded reference.
+  trigger_edit_types:
+  - citation_fix
+  - fact_correction
+  confidence: 0.85
+superseded: []

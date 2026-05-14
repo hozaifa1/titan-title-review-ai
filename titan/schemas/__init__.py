@@ -1,5 +1,6 @@
 """Schema exports for Titan title review data contracts."""
 
+from titan.schemas.learn import EditEvent, EditType, Rule, RuleSet, SupersededRule
 from titan.schemas.title import (
     ChainOfTitleLink,
     Citation,
@@ -24,6 +25,8 @@ __all__ = [
     "ChainOfTitleLink",
     "Citation",
     "CitedSentence",
+    "EditEvent",
+    "EditType",
     "Easement",
     "FieldWithProvenance",
     "LegalDescription",
@@ -31,8 +34,11 @@ __all__ = [
     "PartyParty",
     "Provenance",
     "Restriction",
+    "Rule",
+    "RuleSet",
     "ScheduleBException",
     "ScheduleBRequirement",
+    "SupersededRule",
     "SurveyMatter",
     "TaxInfo",
     "TitleDocument",
