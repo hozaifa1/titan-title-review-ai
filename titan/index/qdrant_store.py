@@ -7,6 +7,10 @@ from typing import Any
 from titan.index.embed import SimpleBM25, cosine
 from titan.index.models import Chunk, EmbeddedChunk, SearchHit
 from titan.schemas import Provenance
+from titan.telemetry import get_logger
+
+log = get_logger(__name__)
+_QDRANT_BATCH_SIZE = 100
 
 
 class HybridChunkStore:
@@ -52,8 +56,8 @@ class HybridChunkStore:
                     with_payload=True,
                 )
                 return _hits_from_qdrant(response.points, "qdrant-dense")
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("qdrant_store.dense_search_failed", error=str(exc))
         scored = [
             SearchHit(chunk=item.chunk, score=cosine(query_dense, item.dense), rank=0, source="dense")
             for item in self.embedded
@@ -71,8 +75,8 @@ class HybridChunkStore:
                     with_payload=True,
                 )
                 return _hits_from_qdrant(response.points, "qdrant-sparse")
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("qdrant_store.sparse_search_failed", error=str(exc))
         scored: list[SearchHit] = []
         for index, item in enumerate(self.embedded):
             bm25_score = self.bm25.score(query, index) if self.bm25 else 0.0
@@ -116,9 +120,14 @@ class HybridChunkStore:
                 )
                 for index, item in enumerate(self.embedded)
             ]
-            client.upsert(collection_name=self.collection_name, points=points)
+            for batch_start in range(0, len(points), _QDRANT_BATCH_SIZE):
+                client.upsert(
+                    collection_name=self.collection_name,
+                    points=points[batch_start : batch_start + _QDRANT_BATCH_SIZE],
+                )
             self._qdrant = client
-        except Exception:
+        except Exception as exc:
+            log.warning("qdrant_store.mirror_failed", error=str(exc))
             self._qdrant = None
 
 

@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
-import os
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -21,10 +19,18 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import yaml
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
+from titan.config import get_settings
 from titan.schemas import EditEvent, EditType, Rule, RuleSet, SupersededRule
+from titan.telemetry import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_RULES_DIR = Path("rules")
 DEFAULT_DISTILL_MODEL = "gemini-2.0-flash"
@@ -48,13 +54,13 @@ class RuleStore:
         try:
             data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except yaml.YAMLError as exc:
-            logger.warning("Failed to read %s: %s", path, exc)
+            logger.warning("rule_store.read_failed", path=str(path), error=str(exc))
             return None
         data.setdefault("section", section)
         try:
             return RuleSet.model_validate(data)
         except Exception as exc:
-            logger.warning("Invalid RuleSet in %s: %s", path, exc)
+            logger.warning("rule_store.invalid_yaml", path=str(path), error=str(exc))
             return None
 
     def save(self, rule_set: RuleSet) -> Path:
@@ -130,7 +136,7 @@ async def distill_rules_for_section(
             )
             used_gemini = True
         except Exception as exc:
-            logger.warning("Gemini rule distillation failed for %s: %s", section, exc)
+            logger.warning("rule_distill.gemini_failed", section=section, error=str(exc))
 
     if not rules:
         rules = _offline_distill(edit_window)
@@ -148,9 +154,15 @@ async def distill_rules_for_section(
 
 
 def _has_gemini_key() -> bool:
-    return bool(os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"))
+    return get_settings().has_gemini
 
 
+@retry(
+    retry=retry_if_exception_type(Exception),
+    wait=wait_exponential(multiplier=1, min=1, max=8),
+    stop=stop_after_attempt(3),
+    reraise=True,
+)
 async def _call_gemini_judge(
     section: str,
     events: list[EditEvent],
@@ -159,7 +171,8 @@ async def _call_gemini_judge(
 ) -> tuple[list[Rule], list[SupersededRule], str]:
     import google.generativeai as genai  # type: ignore[import-untyped]
 
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"))
+    settings = get_settings()
+    genai.configure(api_key=settings.gemini_key)
     model = genai.GenerativeModel(model_name)
     prompt = _judge_prompt(section, events, existing_rules)
     response = await asyncio.to_thread(

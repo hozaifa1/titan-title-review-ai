@@ -1,0 +1,300 @@
+{
+  "matter_id": "wayne_county_commitment_0",
+  "property_address": null,
+  "parcel_id": null,
+  "effective_date": null,
+  "proposed_insured": null,
+  "policy_amount": "2000000",
+  "generated_at": "2026-05-14",
+  "generator_version": "draft-v1",
+  "model": "gemini-2.0-flash",
+  "rules_version": null,
+  "s1_vesting_and_estate": {
+    "section_name": "Vesting and Estate",
+    "summary": [
+      {
+        "text": "Title is vested of record in the parties identified in Schedule A; confirm marital/entity capacity against the vesting deed prior to closing.",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 1,
+            "char_span": [
+              0,
+              3566
+            ],
+            "snippet": "## Page 1\n\nSAMPLE COMMITMENT FOR TITLE INSURANCE\nTHE SCHEDULE A contains the following information\nwhich should be reviewed for accuracy\nCOMMITMENT FOR TITLE INSURANCE\nIssued by\nBLANK TITLE INSURANCE"
+          }
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "bullet_findings": [
+      {
+        "text": "Vesting: 1 extracted item(s).",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 1,
+            "char_span": [
+              0,
+              3566
+            ],
+            "snippet": "## Page 1\n\nSAMPLE COMMITMENT FOR TITLE INSURANCE\nTHE SCHEDULE A contains the following information\nwhich should be reviewed for accuracy\nCOMMITMENT FOR TITLE INSURANCE\nIssued by\nBLANK TITLE INSURANCE"
+          }
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "gaps": [
+      "Structured extraction did not contain estate or interest.",
+      "Structured extraction did not contain proposed insured.",
+      "Structured extraction did not contain effective date."
+    ],
+    "flags": [
+      "yellow"
+    ]
+  },
+  "s2_legal_description": {
+    "section_name": "Legal Description",
+    "summary": [
+      {
+        "text": "The legal description is not present in the extraction; obtain a metes-and-bounds or platted description from the recorded vesting deed before closing.",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 1,
+            "char_span": [
+              0,
+              3566
+            ],
+            "snippet": "## Page 1\n\nSAMPLE COMMITMENT FOR TITLE INSURANCE\nTHE SCHEDULE A contains the following information\nwhich should be reviewed for accuracy\nCOMMITMENT FOR TITLE INSURANCE\nIssued by\nBLANK TITLE INSURANCE"
+          }
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": [
+      "Structured extraction did not contain legal description."
+    ],
+    "flags": [
+      "yellow"
+    ]
+  },
+  "s3_chain_of_title": {
+    "section_name": "Chain of Title",
+    "summary": [
+      {
+        "text": "The chain of title is supported by recorded instruments; cite Deed Book and Page (and Instrument Number where present) for every link in the chain.",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 1,
+            "char_span": [
+              0,
+              3566
+            ],
+            "snippet": "## Page 1\n\nSAMPLE COMMITMENT FOR TITLE INSURANCE\nTHE SCHEDULE A contains the following information\nwhich should be reviewed for accuracy\nCOMMITMENT FOR TITLE INSURANCE\nIssued by\nBLANK TITLE INSURANCE"
+          }
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [
+      {
+        "text": "Parties: 1 extracted item(s).",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 1,
+            "char_span": [
+              0,
+              3566
+            ],
+            "snippet": "## Page 1\n\nSAMPLE COMMITMENT FOR TITLE INSURANCE\nTHE SCHEDULE A contains the following information\nwhich should be reviewed for accuracy\nCOMMITMENT FOR TITLE INSURANCE\nIssued by\nBLANK TITLE INSURANCE"
+          }
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "gaps": [
+      "Structured extraction did not contain chain of title."
+    ],
+    "flags": [
+      "yellow"
+    ]
+  },
+  "s4_open_encumbrances_and_liens": {
+    "section_name": "Open Encumbrances and Liens",
+    "summary": [
+      {
+        "text": "Identify each open lien with creditor, debtor, original amount, recording Book and Page, and current status; treat unreleased records as open until proven otherwise.",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 3,
+            "char_span": [
+              3133,
+              6836
+            ],
+            "snippet": "mortgage to be\ninsured must be signed, delivered and recorded:\n^ This requirement will list the pertinent documents that will be\nrecorded prior to or after closing, such as a Deed or the\nMortgage or A"
+          }
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": [
+      "Structured extraction did not contain open liens.",
+      "Structured extraction did not contain released liens."
+    ],
+    "flags": [
+      "yellow"
+    ]
+  },
+  "s5_easements_and_restrictions": {
+    "section_name": "Easements and Restrictions",
+    "summary": [
+      {
+        "text": "No easements or restrictions appear in the extraction; verify against the recorded plat and any declarations of record.",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 1,
+            "char_span": [
+              0,
+              3566
+            ],
+            "snippet": "## Page 1\n\nSAMPLE COMMITMENT FOR TITLE INSURANCE\nTHE SCHEDULE A contains the following information\nwhich should be reviewed for accuracy\nCOMMITMENT FOR TITLE INSURANCE\nIssued by\nBLANK TITLE INSURANCE"
+          }
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": [
+      "Structured extraction did not contain easements.",
+      "Structured extraction did not contain restrictions."
+    ],
+    "flags": [
+      "yellow"
+    ]
+  },
+  "s6_requirements_schedule_b_i": {
+    "section_name": "Requirements - Schedule B-I",
+    "summary": [
+      {
+        "text": "Schedule B-I requirements must list payoff, release, execution, and recordation steps and identify the responsible party (seller/buyer/lender).",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 1,
+            "char_span": [
+              0,
+              3566
+            ],
+            "snippet": "## Page 1\n\nSAMPLE COMMITMENT FOR TITLE INSURANCE\nTHE SCHEDULE A contains the following information\nwhich should be reviewed for accuracy\nCOMMITMENT FOR TITLE INSURANCE\nIssued by\nBLANK TITLE INSURANCE"
+          }
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": [
+      "Structured extraction did not contain schedule b requirements."
+    ],
+    "flags": [
+      "yellow"
+    ]
+  },
+  "s7_exceptions_schedule_b_ii": {
+    "section_name": "Exceptions - Schedule B-II",
+    "summary": [
+      {
+        "text": "Schedule B-II must enumerate standard and special exceptions and note whether each is removable upon survey or affidavit.",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 3,
+            "char_span": [
+              3133,
+              6836
+            ],
+            "snippet": "mortgage to be\ninsured must be signed, delivered and recorded:\n^ This requirement will list the pertinent documents that will be\nrecorded prior to or after closing, such as a Deed or the\nMortgage or A"
+          }
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": [
+      "Structured extraction did not contain schedule b exceptions."
+    ],
+    "flags": [
+      "yellow"
+    ]
+  },
+  "s8_taxes_and_survey_matters": {
+    "section_name": "Taxes and Survey Matters",
+    "summary": [
+      {
+        "text": "Taxes and survey review includes 0 tax record(s) and 0 survey matter(s).",
+        "citations": [
+          {
+            "doc_id": "wayne_county_commitment_0",
+            "page": 4,
+            "char_span": [
+              6307,
+              10038
+            ],
+            "snippet": "permitted to remove this exception provided that a further title search of the\nproperty (called a bring-down search) is completed prior to closing and a title\naffidavit is obtained from the owner of t"
+          }
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": [
+      "Structured extraction did not contain taxes.",
+      "Structured extraction did not contain survey matters.",
+      "Confirm no delinquent property taxes via current tax certificate."
+    ],
+    "flags": [
+      "yellow"
+    ]
+  },
+  "overall_risk": "curable_issues",
+  "overall_summary": [
+    {
+      "text": "The preliminary title review is classified as curable issues based on the extracted source documents.",
+      "citations": [
+        {
+          "doc_id": "wayne_county_commitment_0",
+          "page": 1,
+          "char_span": [
+            0,
+            3566
+          ],
+          "snippet": "## Page 1\n\nSAMPLE COMMITMENT FOR TITLE INSURANCE\nTHE SCHEDULE A contains the following information\nwhich should be reviewed for accuracy\nCOMMITMENT FOR TITLE INSURANCE\nIssued by\nBLANK TITLE INSURANCE"
+        }
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "open_questions_for_client": [
+    "Structured extraction did not contain estate or interest.",
+    "Structured extraction did not contain proposed insured.",
+    "Structured extraction did not contain effective date.",
+    "Structured extraction did not contain legal description.",
+    "Structured extraction did not contain chain of title.",
+    "Structured extraction did not contain open liens.",
+    "Structured extraction did not contain released liens.",
+    "Structured extraction did not contain easements.",
+    "Structured extraction did not contain restrictions.",
+    "Structured extraction did not contain schedule b requirements.",
+    "Structured extraction did not contain schedule b exceptions.",
+    "Structured extraction did not contain taxes.",
+    "Structured extraction did not contain survey matters.",
+    "Heuristic extractor used because no generated BAML client/API result or gold fixture was available."
+  ]
+}

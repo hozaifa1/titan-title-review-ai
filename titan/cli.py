@@ -7,14 +7,17 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
+from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
+from titan.config import get_settings
 from titan.draft.orchestrator import DraftOrchestrator
+from titan.telemetry import bind_trace_id, configure_logging, get_logger
 from titan.eval.run import render_markdown_table, run_eval
 from titan.index.chunker import chunk_title_document
 from titan.index.embed import DenseEmbedder, embed_chunks
@@ -42,6 +45,12 @@ DEFAULT_DEMO_DOCS = [
 
 
 def main() -> None:
+    settings = get_settings()
+    configure_logging(settings)
+    trace_id = bind_trace_id()
+    log = get_logger("titan.cli")
+    log.info("titan.cli.start", trace_id=trace_id, has_gemini=settings.has_gemini)
+
     parser = argparse.ArgumentParser(prog="titan")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -209,7 +218,11 @@ async def _run_index_query(docs_dir: Path, query: str, top_k: int, qdrant_url: s
         chunks.extend(await chunk_title_document(document, markdown))
 
     embedded, bm25, dense_embedder = embed_chunks(chunks)
-    store = HybridChunkStore(qdrant_url=qdrant_url or os.getenv("QDRANT_URL"), qdrant_api_key=os.getenv("QDRANT_API_KEY") or None)
+    settings = get_settings()
+    store = HybridChunkStore(
+        qdrant_url=qdrant_url or settings.qdrant_url,
+        qdrant_api_key=settings.qdrant_api_key or None,
+    )
     store.upsert(embedded, bm25)
     retriever = HybridRetriever(store, dense_embedder, bm25)
     hits = await retriever.retrieve(query, top_k=top_k)
@@ -259,8 +272,9 @@ async def _run_draft(
     markdown = _read_markdown_for(title_document)
     chunks = await chunk_title_document(title_document, markdown)
     embedded, bm25, dense_embedder = embed_chunks(chunks)
-    qdrant_target = qdrant_url or os.getenv("QDRANT_URL")
-    store = HybridChunkStore(qdrant_url=qdrant_target, qdrant_api_key=os.getenv("QDRANT_API_KEY") or None)
+    settings = get_settings()
+    qdrant_target = qdrant_url or settings.qdrant_url
+    store = HybridChunkStore(qdrant_url=qdrant_target, qdrant_api_key=settings.qdrant_api_key or None)
     store.upsert(embedded, bm25)
     retriever = HybridRetriever(store, dense_embedder, bm25)
 
@@ -270,7 +284,7 @@ async def _run_draft(
         rule_store = RuleStore(rules_dir)
         edit_memory = EditMemory(
             qdrant_url=qdrant_target,
-            qdrant_api_key=os.getenv("QDRANT_API_KEY") or None,
+            qdrant_api_key=settings.qdrant_api_key or None,
             embedder=dense_embedder,
         )
         events = load_edit_events(sqlite_path)
@@ -321,9 +335,10 @@ def _run_learn_capture(
         return
     persist_edit_events(events, sqlite_path)
     embedder = DenseEmbedder()
+    settings = get_settings()
     memory = EditMemory(
-        qdrant_url=qdrant_url or os.getenv("QDRANT_URL"),
-        qdrant_api_key=os.getenv("QDRANT_API_KEY") or None,
+        qdrant_url=qdrant_url or settings.qdrant_url,
+        qdrant_api_key=settings.qdrant_api_key or None,
         embedder=embedder,
     )
     memory.add_many(events)
@@ -408,25 +423,16 @@ async def _run_eval_cmd(
 
 def _sections_with_edits(sqlite_path: Path) -> list[str]:
     events = load_edit_events(sqlite_path)
-    seen: list[str] = []
-    for event in events:
-        if event.section_name not in seen:
-            seen.append(event.section_name)
-    return seen
+    # dict.fromkeys preserves first-seen order while deduplicating in O(n).
+    return list(dict.fromkeys(event.section_name for event in events))
 
 
-def _events_by_section(events: list) -> dict[str, int]:
-    out: dict[str, int] = {}
-    for event in events:
-        out[event.section_name] = out.get(event.section_name, 0) + 1
-    return out
+def _events_by_section(events: list[Any]) -> dict[str, int]:
+    return dict(Counter(event.section_name for event in events))
 
 
-def _events_by_type(events: list) -> dict[str, int]:
-    out: dict[str, int] = {}
-    for event in events:
-        out[event.edit_type] = out.get(event.edit_type, 0) + 1
-    return out
+def _events_by_type(events: list[Any]) -> dict[str, int]:
+    return dict(Counter(event.edit_type for event in events))
 
 
 def _flush_langfuse() -> None:

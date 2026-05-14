@@ -10,7 +10,6 @@ dedicated ``edit_memory`` collection with payload-side filtering by
 from __future__ import annotations
 
 import json
-import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
@@ -20,8 +19,9 @@ from typing import Any, Iterable, Optional
 from titan.index.embed import DenseEmbedder, cosine
 from titan.learn.diff import summarize_for_embedding
 from titan.schemas import EditEvent
+from titan.telemetry import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_COLLECTION = "edit_memory"
 
@@ -80,7 +80,7 @@ class EditMemory:
                 )
             self._qdrant = client
         except Exception as exc:  # pragma: no cover - networked path
-            logger.warning("Qdrant edit_memory disabled: %s", exc)
+            logger.warning("edit_memory.qdrant_disabled", error=str(exc))
             self._qdrant = None
         finally:
             self._qdrant_ready = True
@@ -119,7 +119,7 @@ class EditMemory:
                 )
             self._qdrant.upsert(collection_name=self.collection_name, points=points)
         except Exception as exc:  # pragma: no cover - networked path
-            logger.warning("Qdrant edit_memory upsert failed: %s", exc)
+            logger.warning("edit_memory.upsert_failed", error=str(exc))
             self._qdrant = None
 
     def search(
@@ -168,7 +168,7 @@ class EditMemory:
                 for point in response.points
             ]
         except Exception as exc:  # pragma: no cover - networked path
-            logger.warning("Qdrant edit_memory search failed: %s", exc)
+            logger.warning("edit_memory.search_failed", error=str(exc))
             return None
 
     def _search_local(

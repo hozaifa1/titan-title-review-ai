@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from collections import defaultdict
 
+from titan.config import get_settings
 from titan.index.embed import DenseEmbedder, SimpleBM25
 from titan.index.models import SearchHit
 from titan.index.qdrant_store import HybridChunkStore
@@ -54,7 +54,7 @@ class _Reranker:
     def __init__(self, model_name: str = "BAAI/bge-reranker-v2-m3") -> None:
         self.backend = "lexical-fallback"
         self._model = None
-        if os.getenv("TITAN_LOCAL_MODELS") == "1":
+        if get_settings().use_local_models:
             try:
                 from sentence_transformers import CrossEncoder  # type: ignore[import-not-found]
 

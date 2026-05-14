@@ -16,15 +16,14 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from titan.config import get_settings
 from titan.draft.orchestrator import DraftOrchestrator
 from titan.eval.build_set import EvalCase, load_eval_set
 from titan.eval.metrics import (
-    SECTION_FIELDS,
     SectionEditDistance,
     answer_relevancy,
     faithfulness,
@@ -32,13 +31,13 @@ from titan.eval.metrics import (
     retrieval_recall_at_k,
 )
 from titan.index.chunker import chunk_title_document
-from titan.index.embed import DenseEmbedder, embed_chunks
+from titan.index.embed import embed_chunks
 from titan.index.qdrant_store import HybridChunkStore
 from titan.learn.distill import RuleStore
 from titan.learn.memory import EditMemory
 from titan.persist.sqlite import load_edit_events
 from titan.retrieve.hybrid import HybridRetriever
-from titan.schemas import TitleDocument, TitleReviewSummary
+from titan.schemas import TitleDocument
 
 Condition = Literal["pre", "post"]
 
@@ -139,9 +138,10 @@ async def _run_condition(
             events = load_edit_events(sqlite_path)
         except Exception:
             events = []
+        settings = get_settings()
         edit_memory = EditMemory(
-            qdrant_url=qdrant_url or os.getenv("QDRANT_URL"),
-            qdrant_api_key=os.getenv("QDRANT_API_KEY") or None,
+            qdrant_url=qdrant_url or settings.qdrant_url,
+            qdrant_api_key=settings.qdrant_api_key or None,
         )
         if events:
             edit_memory.add_many(events)
@@ -178,9 +178,10 @@ async def _run_case(
     markdown = _document_markdown(title_document)
     chunks = await chunk_title_document(title_document, markdown)
     embedded, bm25, dense_embedder = embed_chunks(chunks)
+    settings = get_settings()
     store = HybridChunkStore(
-        qdrant_url=qdrant_url or os.getenv("QDRANT_URL"),
-        qdrant_api_key=os.getenv("QDRANT_API_KEY") or None,
+        qdrant_url=qdrant_url or settings.qdrant_url,
+        qdrant_api_key=settings.qdrant_api_key or None,
     )
     store.upsert(embedded, bm25)
     retriever = HybridRetriever(store, dense_embedder, bm25)

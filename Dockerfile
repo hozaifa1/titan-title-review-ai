@@ -25,7 +25,12 @@ COPY baml_src ./baml_src
 COPY data ./data
 COPY main.py ./main.py
 
-RUN mkdir -p /app/cache/huggingface /app/cache/docling
+RUN mkdir -p /app/cache/huggingface /app/cache/docling \
+    && addgroup --system titan \
+    && adduser --system --ingroup titan --home /app --no-create-home titan \
+    && chown -R titan:titan /app
+
+USER titan
 
 ENTRYPOINT ["python", "-m", "titan.cli"]
 CMD ["index-query", "--query", "Who is the vested owner?", "--top-k", "5", "--qdrant-url", "http://qdrant:6333"]

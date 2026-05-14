@@ -10,15 +10,23 @@ endpoint without changing the public `parse_document` contract.
 from __future__ import annotations
 
 import asyncio
-import os
 import re
 from pathlib import Path
 
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
+from titan.config import get_settings
 from titan.ingest.models import PageClass, ParsedDoc, ParsedPage, ParserName
+from titan.telemetry import get_logger
 
 LOW_CONFIDENCE_THRESHOLD = 0.8
+MAX_PAGES_PER_DOC = 500  # bound memory + Gemini cost on adversarial inputs
+log = get_logger(__name__)
 
 
 async def parse_document(path: str | Path) -> ParsedDoc:
@@ -29,6 +37,18 @@ async def parse_document(path: str | Path) -> ParsedDoc:
     if not docling_pages:
         docling_pages, pdf_warnings = await _run_pdfplumber(source_path)
         warnings.extend(pdf_warnings)
+
+    if len(docling_pages) > MAX_PAGES_PER_DOC:
+        log.warning(
+            "ocr.page_cap_applied",
+            path=str(source_path),
+            requested=len(docling_pages),
+            cap=MAX_PAGES_PER_DOC,
+        )
+        warnings.append(
+            f"Document had {len(docling_pages)} pages; truncated to {MAX_PAGES_PER_DOC}."
+        )
+        docling_pages = docling_pages[:MAX_PAGES_PER_DOC]
 
     pages: list[ParsedPage] = []
     parser_chain: list[ParserName] = ["docling"]
@@ -65,31 +85,50 @@ async def classify_page(markdown: str, path: Path, page_number: int) -> PageClas
     if _looks_handwritten(path, markdown):
         return "handwritten"
 
-    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    settings = get_settings()
+    api_key = settings.gemini_key
     if not api_key:
         return _heuristic_classification(markdown)
 
     try:
-        import google.generativeai as genai  # type: ignore[import-untyped]
-
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        prompt = (
-            "Classify this OCR page as exactly one of clean_text, scanned_typed, "
-            "handwritten, mixed_low_quality. Return only the label.\n\n"
-            f"File: {path.name}, page {page_number}\n\n{markdown[:4000]}"
-        )
-        response = await asyncio.to_thread(model.generate_content, prompt)
-        label = (response.text or "").strip().lower()
+        label = await _classify_with_gemini(api_key, settings.gemini_model, path, page_number, markdown)
         if label in {"clean_text", "scanned_typed", "handwritten", "mixed_low_quality"}:
             return label  # type: ignore[return-value]
-    except Exception:
+    except Exception as exc:
+        log.warning("page classification fell back to heuristic", error=str(exc), page=page_number)
         return _heuristic_classification(markdown)
 
     return _heuristic_classification(markdown)
 
 
-@retry(wait=wait_exponential(multiplier=1, min=1, max=6), stop=stop_after_attempt(3))
+@retry(
+    retry=retry_if_exception_type(Exception),
+    wait=wait_exponential(multiplier=1, min=1, max=6),
+    stop=stop_after_attempt(3),
+    reraise=True,
+)
+async def _classify_with_gemini(
+    api_key: str, model_name: str, path: Path, page_number: int, markdown: str
+) -> str:
+    import google.generativeai as genai  # type: ignore[import-untyped]
+
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(model_name)
+    prompt = (
+        "Classify this OCR page as exactly one of clean_text, scanned_typed, "
+        "handwritten, mixed_low_quality. Return only the label.\n\n"
+        f"File: {path.name}, page {page_number}\n\n{markdown[:4000]}"
+    )
+    response = await asyncio.to_thread(model.generate_content, prompt)
+    return (response.text or "").strip().lower()
+
+
+@retry(
+    retry=retry_if_exception_type(Exception),
+    wait=wait_exponential(multiplier=1, min=1, max=6),
+    stop=stop_after_attempt(3),
+    reraise=False,
+)
 async def _run_docling(path: Path) -> tuple[list[ParsedPage], list[str]]:
     try:
         from docling.document_converter import DocumentConverter  # type: ignore[import-not-found]

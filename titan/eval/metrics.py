@@ -24,7 +24,7 @@ import re
 from dataclasses import dataclass
 from typing import Iterable
 
-from titan.index.embed import DenseEmbedder, cosine, tokenize
+from titan.index.embed import DenseEmbedder, cosine
 from titan.index.models import SearchHit
 from titan.schemas import CitedSentence, TitleReviewSection, TitleReviewSummary
 
