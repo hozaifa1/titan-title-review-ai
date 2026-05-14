@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from titan.draft.orchestrator import DraftOrchestrator
+from titan.eval.run import render_markdown_table, run_eval
 from titan.index.chunker import chunk_title_document
 from titan.index.embed import DenseEmbedder, embed_chunks
 from titan.index.qdrant_store import HybridChunkStore
@@ -89,6 +90,15 @@ def main() -> None:
     learn_distill.add_argument("--section", default=None, help="Section field_name (e.g. s4_open_encumbrances_and_liens). Default: all sections with edits.")
     learn_distill.add_argument("--window", type=int, default=20)
 
+    eval_run = subparsers.add_parser(
+        "eval-run",
+        help="Run the held-out paired eval (pre and post learning); writes eval/results_pre.json and eval/results_post.json.",
+    )
+    eval_run.add_argument("--sqlite", default="data/titan.db")
+    eval_run.add_argument("--rules-dir", default="rules")
+    eval_run.add_argument("--qdrant-url", default=None)
+    eval_run.add_argument("--output-dir", default="eval")
+
     args = parser.parse_args()
     if args.command == "ingest":
         asyncio.run(_run_one(Path(args.path), Path(args.out_dir), Path(args.sqlite)))
@@ -125,6 +135,15 @@ def main() -> None:
                 Path(args.rules_dir),
                 args.section,
                 args.window,
+            )
+        )
+    elif args.command == "eval-run":
+        asyncio.run(
+            _run_eval_cmd(
+                Path(args.sqlite),
+                Path(args.rules_dir),
+                args.qdrant_url,
+                Path(args.output_dir),
             )
         )
 
@@ -349,6 +368,42 @@ async def _run_learn_distill(
             }
         )
     print(json.dumps({"distilled": output, "rules_version": rule_store.aggregated_version_tag()}, indent=2))
+
+
+async def _run_eval_cmd(
+    sqlite_path: Path,
+    rules_dir: Path,
+    qdrant_url: str | None,
+    output_dir: Path,
+) -> None:
+    report = await run_eval(
+        sqlite_path=sqlite_path,
+        rules_dir=rules_dir,
+        qdrant_url=qdrant_url,
+        output_dir=output_dir,
+    )
+    print(
+        json.dumps(
+            {
+                "pre": {
+                    "aggregate": report.pre.aggregate,
+                    "cases": [case.doc_id for case in report.pre.cases],
+                    "rules_version": report.pre.rules_version,
+                    "edit_memory_size": report.pre.edit_memory_size,
+                },
+                "post": {
+                    "aggregate": report.post.aggregate,
+                    "cases": [case.doc_id for case in report.post.cases],
+                    "rules_version": report.post.rules_version,
+                    "edit_memory_size": report.post.edit_memory_size,
+                },
+                "improvement": report.improvement,
+                "output_dir": str(output_dir),
+            },
+            indent=2,
+        )
+    )
+    print("\n" + render_markdown_table(report))
 
 
 def _sections_with_edits(sqlite_path: Path) -> list[str]:

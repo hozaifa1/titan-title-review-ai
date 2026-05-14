@@ -64,6 +64,8 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+scripts/
+tests/
 
 # Type checking
 .mypy_cache/
@@ -76,6 +78,7 @@ dmypy.json
 
 # Data & Models
 data/raw/
+data/out/*
 data/eval/
 models/
 *.pth

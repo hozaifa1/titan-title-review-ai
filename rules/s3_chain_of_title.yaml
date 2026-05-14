@@ -1,11 +1,13 @@
 section: s3_chain_of_title
 version: 1
-created_at: '2026-05-14T08:38:26.407651Z'
+created_at: '2026-05-14T09:58:06.985047Z'
 generated_from_edit_ids:
-- e_917e9e373c5b
+- e_e0b8c7323b30
+- e_e2bf2d842d47
+- e_a07fea731332
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: page, number, book.'
+  text: 'Prefer terminology added by reviewers: supported, page, every.'
   trigger_edit_types:
   - wording
   - style

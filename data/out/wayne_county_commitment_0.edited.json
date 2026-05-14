@@ -58,7 +58,7 @@
     "section_name": "Legal Description",
     "summary": [
       {
-        "text": "The legal description was not reliably extracted.",
+        "text": "The legal description is not present in the extraction; obtain a metes-and-bounds or platted description from the recorded vesting deed before closing.",
         "citations": [
           {
             "doc_id": "wayne_county_commitment_0",
@@ -70,7 +70,7 @@
             "snippet": "## Page 1\n\nSAMPLE COMMITMENT FOR TITLE INSURANCE\nTHE SCHEDULE A contains the following information\nwhich should be reviewed for accuracy\nCOMMITMENT FOR TITLE INSURANCE\nIssued by\nBLANK TITLE INSURANCE"
           }
         ],
-        "confidence": "medium"
+        "confidence": "high"
       }
     ],
     "bullet_findings": [],
@@ -156,7 +156,7 @@
     "section_name": "Easements and Restrictions",
     "summary": [
       {
-        "text": "The source extraction identifies 0 easement or restriction matter(s).",
+        "text": "No easements or restrictions appear in the extraction; verify against the recorded plat and any declarations of record.",
         "citations": [
           {
             "doc_id": "wayne_county_commitment_0",

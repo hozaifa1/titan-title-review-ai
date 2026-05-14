@@ -1,11 +1,13 @@
 section: s1_vesting_and_estate
 version: 1
-created_at: '2026-05-14T08:38:25.477504Z'
+created_at: '2026-05-14T09:58:05.473888Z'
 generated_from_edit_ids:
-- e_3f608424ee28
+- e_a037e7d822b3
+- e_3e15db34ab12
+- e_bb5f94c19ba6
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: entity, identified, record.'
+  text: 'Prefer terminology added by reviewers: record, closing, entity.'
   trigger_edit_types:
   - wording
   - style

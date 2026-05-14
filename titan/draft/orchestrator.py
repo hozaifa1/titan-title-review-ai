@@ -133,6 +133,7 @@ class DraftOrchestrator:
             structured = _structured_context(title_document, spec.structured_fields)
             rule_set = self._load_rules(spec)
             few_shot = self._retrieve_few_shot_edits(spec, structured)
+            few_shot = _filter_groundable_edits(few_shot, hits)
             sections[spec.field_name] = await self._draft_section(
                 spec, title_document, hits, structured, rule_set, few_shot
             )
@@ -346,12 +347,12 @@ def _fallback_section(
     few_shot: list[EditEvent] | None = None,
 ) -> TitleReviewSection:
     citation = _citation_from_hit(hits[0]) if hits else _citation_from_doc(title_document)
-    summary_text = _apply_few_shot_style(
-        _fallback_summary_sentence(spec, title_document, structured),
-        few_shot or [],
-    )
-    findings = _fallback_findings(spec, structured, citation)
+    baseline_text = _fallback_summary_sentence(spec, title_document, structured)
+    summary_text = _apply_few_shot_style(baseline_text, few_shot or [])
+    adopted_operator_wording = summary_text is not baseline_text and summary_text != baseline_text
+    findings = [] if adopted_operator_wording else _fallback_findings(spec, structured, citation)
     gaps = _fallback_gaps(spec, structured)
+    gaps.extend(_gaps_from_few_shot(few_shot or [], gaps))
     findings.extend(_findings_from_rules(rule_set, citation))
     flags = _apply_rule_flags(
         _baseline_flags(gaps, title_document),
@@ -375,18 +376,14 @@ def _baseline_flags(
 
 
 def _findings_from_rules(rule_set: RuleSet | None, citation: Citation) -> list[CitedSentence]:
-    if not rule_set or not rule_set.rules:
-        return []
-    findings: list[CitedSentence] = []
-    for rule in rule_set.rules[:2]:
-        findings.append(
-            CitedSentence(
-                text=f"Applied rule ({rule.id}): {rule.text}",
-                citations=[citation],
-                confidence="medium",
-            )
-        )
-    return findings
+    """Rules influence summary wording (via few-shot adoption) and flags.
+
+    Returning no bullet findings keeps the draft surface clean; rule effects
+    are still visible through ``rules_version`` and ``_apply_rule_flags``.
+    """
+
+    del rule_set, citation
+    return []
 
 
 def _apply_rule_flags(
@@ -403,11 +400,116 @@ def _apply_rule_flags(
     return flags
 
 
+def _filter_groundable_edits(events: list[EditEvent], hits: list[SearchHit]) -> list[EditEvent]:
+    """Keep only past edits whose ``after`` text is reasonably supported by the current chunks.
+
+    Prevents adopting operator wording from a previous matter when the current
+    document's retrieved evidence does not support those terms. Falls back to
+    the unfiltered list when no chunks are available (deterministic for tests).
+    """
+
+    if not events or not hits:
+        return events
+    context_tokens = {
+        token
+        for hit in hits
+        for token in re.findall(r"\w+", hit.chunk.contextual_text.lower())
+        if len(token) >= 4
+    }
+    if not context_tokens:
+        return events
+    grounded: list[EditEvent] = []
+    for event in events:
+        after_tokens = {
+            token
+            for token in re.findall(r"\w+", event.after.lower())
+            if len(token) >= 4 and token not in _GENERIC_WORDS
+        }
+        if not after_tokens:
+            grounded.append(event)
+            continue
+        overlap = len(after_tokens & context_tokens) / len(after_tokens)
+        if overlap >= 0.4:
+            grounded.append(event)
+    return grounded
+
+
+_GENERIC_WORDS: frozenset[str] = frozenset(
+    {
+        "must",
+        "should",
+        "shall",
+        "will",
+        "with",
+        "from",
+        "this",
+        "that",
+        "these",
+        "those",
+        "have",
+        "been",
+        "into",
+        "before",
+        "after",
+        "each",
+        "every",
+        "their",
+        "there",
+        "where",
+        "which",
+        "while",
+        "until",
+        "than",
+        "then",
+        "also",
+    }
+)
+
+
+def _gaps_from_few_shot(few_shot: list[EditEvent], existing_gaps: list[str]) -> list[str]:
+    """Carry forward operator-added gaps from prior edits on the same section."""
+
+    extras: list[str] = []
+    seen = set(existing_gaps)
+    for event in few_shot:
+        if not event.field_path.startswith("gaps"):
+            continue
+        if event.edit_type != "addition" or not event.after.strip():
+            continue
+        if event.after in seen:
+            continue
+        seen.add(event.after)
+        extras.append(event.after)
+    return extras
+
+
 def _apply_few_shot_style(text: str, few_shot: list[EditEvent]) -> str:
+    """Adopt operator wording when an aligned prior edit exists.
+
+    Only adopts the operator's ``after`` text when their ``before`` text closely
+    matches what the orchestrator was about to emit (same boilerplate skeleton).
+    This guards against blind cross-document adoption that would hurt
+    faithfulness when the operator edited a different matter.
+    """
+
     if not few_shot:
         return text
-    suffix = " (style adopted from prior operator edits)"
-    return text + suffix if not text.endswith(suffix) else text
+    for event in few_shot:
+        if event.field_path != "summary[0].text":
+            continue
+        if not event.after.strip():
+            continue
+        if _token_jaccard(event.before, text) >= 0.5:
+            return event.after
+    return text
+
+
+def _token_jaccard(left: str, right: str) -> float:
+    left_tokens = {token for token in re.findall(r"\w+", left.lower()) if len(token) >= 4}
+    right_tokens = {token for token in re.findall(r"\w+", right.lower()) if len(token) >= 4}
+    if not left_tokens or not right_tokens:
+        return 0.0
+    return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
 
 
 def _fallback_summary_sentence(spec: SectionSpec, title_document: TitleDocument, structured: dict[str, Any]) -> str:

@@ -1,13 +1,13 @@
-section: s4_open_encumbrances_and_liens
+section: s2_legal_description
 version: 1
-created_at: '2026-05-14T09:58:07.647099Z'
+created_at: '2026-05-14T09:58:06.067511Z'
 generated_from_edit_ids:
-- e_98e4f3b078cd
-- e_730714f41752
-- e_538655f01d4b
+- e_eb49237e2742
+- e_a3406b620723
+- e_2b112de6613b
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: until, otherwise, each.'
+  text: 'Prefer terminology added by reviewers: obtain, metes-and-bounds, platted.'
   trigger_edit_types:
   - wording
   - style

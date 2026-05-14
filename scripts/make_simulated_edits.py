@@ -34,6 +34,30 @@ def main() -> None:
             confidence="medium",
         )
 
+    # s2 — house style for legal description
+    if summary.s2_legal_description.summary:
+        s = summary.s2_legal_description.summary[0]
+        summary.s2_legal_description.summary[0] = CitedSentence(
+            text=(
+                "The legal description is not present in the extraction; obtain a "
+                "metes-and-bounds or platted description from the recorded vesting deed before closing."
+            ),
+            citations=s.citations,
+            confidence="high",
+        )
+
+    # s5 — house style for easements and restrictions
+    if summary.s5_easements_and_restrictions.summary:
+        s = summary.s5_easements_and_restrictions.summary[0]
+        summary.s5_easements_and_restrictions.summary[0] = CitedSentence(
+            text=(
+                "No easements or restrictions appear in the extraction; verify against "
+                "the recorded plat and any declarations of record."
+            ),
+            citations=s.citations,
+            confidence="medium",
+        )
+
     # s3 — citation fix: add Book/Page anchoring
     if summary.s3_chain_of_title.summary:
         s = summary.s3_chain_of_title.summary[0]

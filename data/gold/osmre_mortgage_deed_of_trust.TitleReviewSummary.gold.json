@@ -1,0 +1,148 @@
+{
+  "matter_id": "osmre_mortgage_deed_of_trust",
+  "property_address": null,
+  "parcel_id": null,
+  "effective_date": null,
+  "proposed_insured": null,
+  "policy_amount": null,
+  "generated_at": "2026-05-14",
+  "generator_version": "gold-v1",
+  "model": "human",
+  "rules_version": null,
+  "s1_vesting_and_estate": {
+    "section_name": "Vesting and Estate",
+    "summary": [
+      {
+        "text": "This instrument is an OSMRE form deed of trust; vesting is held by the Grantor whose name is left blank on the form and is not the policy vested owner.",
+        "citations": [
+          {"doc_id": "osmre_mortgage_deed_of_trust", "page": 1, "char_span": [160, 760], "snippet": "MORTGAGE OR DEED OF TRUST between the Grantor, Office of Surface Mining Reclamation and Enforcement Trustee, and the United States of America Beneficiary."}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Grantor name is blank on the form."],
+    "flags": ["yellow"]
+  },
+  "s2_legal_description": {
+    "section_name": "Legal Description",
+    "summary": [
+      {
+        "text": "No legal description is provided on the form; obtain the metes-and-bounds or platted description from the recorded vesting deed.",
+        "citations": [
+          {"doc_id": "osmre_mortgage_deed_of_trust", "page": 1, "char_span": [160, 1080], "snippet": "Real Property described below"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Legal description blank on the form."],
+    "flags": ["yellow"]
+  },
+  "s3_chain_of_title": {
+    "section_name": "Chain of Title",
+    "summary": [
+      {
+        "text": "The form establishes one recorded link: a deed of trust from the Grantor to the Office of Surface Mining Reclamation and Enforcement as Trustee for the United States of America as Beneficiary; cite Book and Page on recording.",
+        "citations": [
+          {"doc_id": "osmre_mortgage_deed_of_trust", "page": 1, "char_span": [160, 760], "snippet": "MORTGAGE OR DEED OF TRUST between the Grantor, Office of Surface Mining Reclamation and Enforcement Trustee, and the United States of America Beneficiary."}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No prior chain links extracted; obtain back-title."],
+    "flags": ["yellow"]
+  },
+  "s4_open_encumbrances_and_liens": {
+    "section_name": "Open Encumbrances and Liens",
+    "summary": [
+      {
+        "text": "An OSMRE first-priority deed of trust is open against the Real Property; treat the lien as open with no release reference until satisfied by the Grantor.",
+        "citations": [
+          {"doc_id": "osmre_mortgage_deed_of_trust", "page": 1, "char_span": [520, 1080], "snippet": "A first mortgage, first deed of trust or first-lien security granting OSM a security interest in the Real Property described below."}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Original amount, recorded date, and Book/Page are blank on the form."],
+    "flags": ["red"]
+  },
+  "s5_easements_and_restrictions": {
+    "section_name": "Easements and Restrictions",
+    "summary": [
+      {
+        "text": "No easements or restrictions appear in the extracted form; verify against the recorded vesting deed and any conservation overlays.",
+        "citations": [
+          {"doc_id": "osmre_mortgage_deed_of_trust", "page": 1, "char_span": [160, 1080], "snippet": "OSMRE deed of trust form"}
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No easements or restrictions extracted."],
+    "flags": ["yellow"]
+  },
+  "s6_requirements_schedule_b_i": {
+    "section_name": "Requirements - Schedule B-I",
+    "summary": [
+      {
+        "text": "Schedule B-I should require execution, notarization, and recordation of the OSMRE deed of trust and release of any senior liens before policy issuance.",
+        "citations": [
+          {"doc_id": "osmre_mortgage_deed_of_trust", "page": 1, "char_span": [160, 760], "snippet": "OSMRE deed of trust to be executed and recorded"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Form has not yet been executed or recorded."],
+    "flags": ["yellow"]
+  },
+  "s7_exceptions_schedule_b_ii": {
+    "section_name": "Exceptions - Schedule B-II",
+    "summary": [
+      {
+        "text": "Standard ALTA exceptions apply and the OSMRE deed of trust should appear as a special exception once recorded.",
+        "citations": [
+          {"doc_id": "osmre_mortgage_deed_of_trust", "page": 1, "char_span": [160, 1080], "snippet": "OSMRE first-priority deed of trust"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No Schedule B-II exceptions extracted from the form."],
+    "flags": ["yellow"]
+  },
+  "s8_taxes_and_survey_matters": {
+    "section_name": "Taxes and Survey Matters",
+    "summary": [
+      {
+        "text": "The form imposes a tax-payment covenant but no specific tax year or amount is stated; obtain a current tax certificate and a survey of the Real Property.",
+        "citations": [
+          {"doc_id": "osmre_mortgage_deed_of_trust", "page": 1, "char_span": [160, 1080], "snippet": "Tax covenant on OSMRE form"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No tax year or tax amount specified.", "No survey matters extracted."],
+    "flags": ["yellow"]
+  },
+  "overall_risk": "material_issues",
+  "overall_summary": [
+    {
+      "text": "Material issues: this is an unexecuted OSMRE deed-of-trust form with blanks for grantor, property, and amount; execution, recordation, and back-title research are required before any policy can issue.",
+      "citations": [
+        {"doc_id": "osmre_mortgage_deed_of_trust", "page": 1, "char_span": [160, 1080], "snippet": "OSMRE deed of trust between Grantor, Trustee, and Beneficiary"}
+      ],
+      "confidence": "high"
+    }
+  ],
+  "open_questions_for_client": [
+    "Complete the grantor, property description, amount, county, and recording references on the form.",
+    "Provide the recorded vesting deed for back-title research.",
+    "Provide a current tax certificate.",
+    "Provide a current survey of the Real Property."
+  ]
+}

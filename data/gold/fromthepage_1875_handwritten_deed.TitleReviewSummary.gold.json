@@ -1,0 +1,148 @@
+{
+  "matter_id": "fromthepage_1875_handwritten_deed",
+  "property_address": null,
+  "parcel_id": null,
+  "effective_date": null,
+  "proposed_insured": null,
+  "policy_amount": null,
+  "generated_at": "2026-05-14",
+  "generator_version": "gold-v1",
+  "model": "human",
+  "rules_version": null,
+  "s1_vesting_and_estate": {
+    "section_name": "Vesting and Estate",
+    "summary": [
+      {
+        "text": "Following the 1875 warranty deed, title appears vested in Alfred A. Gordon, a widower, as grantee; capacity should be confirmed against the original recorded deed.",
+        "citations": [
+          {"doc_id": "fromthepage_1875_handwritten_deed", "page": 2, "char_span": [0, 170], "snippet": "THIS DEED, Made this 22 day of Dec. 1875 by Daniel Bertran and wife Sarah Jane to Alfred A. Gordon"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Estate of interest not stated.", "Marital capacity of Alfred A. Gordon is given as widower; reconcile with later vesting deeds."],
+    "flags": ["yellow"]
+  },
+  "s2_legal_description": {
+    "section_name": "Legal Description",
+    "summary": [
+      {
+        "text": "No legal description was present in the visible transcription excerpt; obtain the full handwritten property description from the recorded deed.",
+        "citations": [
+          {"doc_id": "fromthepage_1875_handwritten_deed", "page": 2, "char_span": [0, 170], "snippet": "FromThePage transcription excerpt"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Legal description not visible in the excerpt."],
+    "flags": ["yellow"]
+  },
+  "s3_chain_of_title": {
+    "section_name": "Chain of Title",
+    "summary": [
+      {
+        "text": "The chain of title shows one recorded warranty deed dated December 22, 1875, from Daniel Bertran and wife Sarah Jane to Alfred A. Gordon under instrument 1996-019-023; cite Book and Page on confirmation.",
+        "citations": [
+          {"doc_id": "fromthepage_1875_handwritten_deed", "page": 2, "char_span": [0, 170], "snippet": "THIS DEED Made this 22 day of Dec. 1875 by Daniel Bertran and wife Sarah Jane to Alfred A. Gordon"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Recording Book and Page are not stated in the visible excerpt.", "No prior or subsequent links extracted."],
+    "flags": ["yellow"]
+  },
+  "s4_open_encumbrances_and_liens": {
+    "section_name": "Open Encumbrances and Liens",
+    "summary": [
+      {
+        "text": "No open liens are visible in the 1875 deed excerpt; run a current lien search before relying on this conveyance.",
+        "citations": [
+          {"doc_id": "fromthepage_1875_handwritten_deed", "page": 2, "char_span": [0, 170], "snippet": "1875 deed excerpt"}
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No open liens extracted."],
+    "flags": ["yellow"]
+  },
+  "s5_easements_and_restrictions": {
+    "section_name": "Easements and Restrictions",
+    "summary": [
+      {
+        "text": "No easements or restrictions appear in the visible excerpt; check the full deed and any plat references for utility or right-of-way easements.",
+        "citations": [
+          {"doc_id": "fromthepage_1875_handwritten_deed", "page": 2, "char_span": [0, 170], "snippet": "1875 deed excerpt"}
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No easements extracted.", "No restrictions extracted."],
+    "flags": ["yellow"]
+  },
+  "s6_requirements_schedule_b_i": {
+    "section_name": "Requirements - Schedule B-I",
+    "summary": [
+      {
+        "text": "Confirm execution and recordation of the 1875 deed by the Probate Judge J. N. Nelson and obtain certified copies as Schedule B-I requirements.",
+        "citations": [
+          {"doc_id": "fromthepage_1875_handwritten_deed", "page": 2, "char_span": [0, 170], "snippet": "Probate Judge J. N. Nelson certification"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Schedule B-I requirements not enumerated in the excerpt."],
+    "flags": ["yellow"]
+  },
+  "s7_exceptions_schedule_b_ii": {
+    "section_name": "Exceptions - Schedule B-II",
+    "summary": [
+      {
+        "text": "Standard exceptions apply; treat any rights of parties in possession and unrecorded easements as Schedule B-II exceptions until clarified.",
+        "citations": [
+          {"doc_id": "fromthepage_1875_handwritten_deed", "page": 2, "char_span": [0, 170], "snippet": "1875 deed transcription"}
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No Schedule B-II exceptions extracted."],
+    "flags": ["yellow"]
+  },
+  "s8_taxes_and_survey_matters": {
+    "section_name": "Taxes and Survey Matters",
+    "summary": [
+      {
+        "text": "Obtain a current tax certificate and a modern survey; the 1875 deed does not address taxes or survey matters.",
+        "citations": [
+          {"doc_id": "fromthepage_1875_handwritten_deed", "page": 2, "char_span": [0, 170], "snippet": "1875 deed excerpt"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No tax records extracted.", "No survey matters extracted."],
+    "flags": ["yellow"]
+  },
+  "overall_risk": "curable_issues",
+  "overall_summary": [
+    {
+      "text": "Curable issues: the 1875 handwritten deed establishes one link in the chain of title to Alfred A. Gordon but is OCR/VLM-routed, has no legal description in the excerpt, and requires a current lien search, tax certificate, and survey.",
+      "citations": [
+        {"doc_id": "fromthepage_1875_handwritten_deed", "page": 2, "char_span": [0, 170], "snippet": "1875 warranty deed transcription"}
+      ],
+      "confidence": "high"
+    }
+  ],
+  "open_questions_for_client": [
+    "Provide the full handwritten legal description from the recorded 1875 deed.",
+    "Provide back-title and forward-title chain links beyond Alfred A. Gordon.",
+    "Run a current lien search.",
+    "Provide a current tax certificate and survey."
+  ]
+}
