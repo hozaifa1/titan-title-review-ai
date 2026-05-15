@@ -78,14 +78,20 @@ DocType = Literal[
 
 
 async def ExtractTitleDocument(markdown: str, doc_type: DocType, parsed_doc: ParsedDoc | None = None) -> TitleDocument:
-    """Extract a validated `TitleDocument` from OCR markdown."""
+    """Extract a validated `TitleDocument` from OCR markdown.
 
+    Gold fixtures are merged with heuristic extraction: fixture values take
+    precedence when present; heuristic fills in null/empty fields that the
+    fixture left blank.
+    """
+
+    heuristic = _heuristic_extract(markdown, doc_type, parsed_doc)
     doc_id = parsed_doc.doc_id if parsed_doc else "inline_document"
     fixture = _load_gold_fixture(doc_id)
-    if fixture is not None:
-        return fixture
+    if fixture is None:
+        return heuristic
 
-    return _heuristic_extract(markdown, doc_type, parsed_doc)
+    return _merge_fixture_with_heuristic(fixture, heuristic)
 
 
 async def extract_title_document(parsed_doc: ParsedDoc, doc_type: DocType | None = None) -> TitleDocument:
@@ -124,6 +130,40 @@ def _load_gold_fixture(doc_id: str) -> TitleDocument | None:
     except ValidationError:
         data = json.loads(path.read_text(encoding="utf-8"))
         return TitleDocument.model_validate(data)
+
+
+def _merge_fixture_with_heuristic(fixture: TitleDocument, heuristic: TitleDocument) -> TitleDocument:
+    """Overlay heuristic-extracted fields onto a gold fixture where the fixture has None/empty values."""
+
+    merged_data = fixture.model_dump()
+    heuristic_data = heuristic.model_dump()
+
+    # Fields that can be filled from heuristic when fixture has them as None or empty
+    fillable_fields = [
+        "effective_date", "proposed_insured", "estate_or_interest",
+        "policy_amount", "legal_description",
+    ]
+    list_fields = [
+        "parties", "vesting", "chain_of_title", "open_liens",
+        "schedule_b_requirements", "schedule_b_exceptions",
+        "easements", "restrictions", "taxes", "survey_matters",
+    ]
+
+    for field in fillable_fields:
+        if merged_data.get(field) is None and heuristic_data.get(field) is not None:
+            merged_data[field] = heuristic_data[field]
+
+    for field in list_fields:
+        if not merged_data.get(field) and heuristic_data.get(field):
+            merged_data[field] = heuristic_data[field]
+
+    # Preserve heuristic warnings merged with fixture warnings
+    fixture_warnings = merged_data.get("extraction_warnings") or []
+    merged_data["extraction_warnings"] = fixture_warnings + [
+        "Gold fixture merged with heuristic extraction for missing fields."
+    ]
+
+    return TitleDocument.model_validate(merged_data)
 
 
 def _heuristic_extract(markdown: str, doc_type: DocType, parsed_doc: ParsedDoc | None) -> TitleDocument:
@@ -188,14 +228,26 @@ _DATE_FORMATS = (
 
 
 def _extract_effective_date(markdown: str, doc_id: str) -> FieldWithProvenance[date] | None:
-    """Pull the ALTA Schedule A 'Effective Date' line."""
+    """Pull the ALTA Schedule A effective/commitment date line.
+
+    Handles both traditional 'Effective Date' and ALTA 2021 'Commitment Date' labels,
+    as well as numbered list format ('1. Effective Date: ...').
+    """
 
     match = re.search(
-        r"Effective\s+Date[:\s]+([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|"
+        r"(?:Effective|Commitment)\s+Date[:\s]+([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|"
         r"[A-Z][a-z]+\s+[0-9]{1,2},\s*[0-9]{4})",
         markdown,
         re.IGNORECASE,
     )
+    # Fallback: try 'Date of Policy/Commitment: ...'
+    if not match:
+        match = re.search(
+            r"Date\s+of\s+(?:Policy|Commitment)[:\s]+([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|"
+            r"[A-Z][a-z]+\s+[0-9]{1,2},\s*[0-9]{4})",
+            markdown,
+            re.IGNORECASE,
+        )
     if not match:
         return None
     raw = match.group(1).strip()
@@ -226,13 +278,25 @@ def _parse_date(raw: str) -> date | None:
 
 
 def _extract_proposed_insured(markdown: str, doc_id: str) -> FieldWithProvenance[str] | None:
-    """First 'Proposed Insured: <name>' line wins; commitments often have several policies."""
+    """First 'Proposed Insured: <name>' line wins; commitments often have several policies.
 
+    Handles both inline (Proposed Insured: John Buyer) and multi-line Docling format
+    where the name appears on the next non-empty line.
+    """
+
+    # Try inline match first (name on same line)
     match = re.search(
         r"Proposed\s+Insured[:\s]+([A-Z][A-Za-z .,&'-]{2,120})",
         markdown,
         re.IGNORECASE,
     )
+    # Fallback: 'Named Insured:' (used in some policies)
+    if not match:
+        match = re.search(
+            r"Named\s+Insured[:\s]+([A-Z][A-Za-z .,&'-]{2,120})",
+            markdown,
+            re.IGNORECASE,
+        )
     if not match:
         return None
     name = _clean_name(match.group(1))
@@ -253,13 +317,34 @@ def _extract_proposed_insured(markdown: str, doc_id: str) -> FieldWithProvenance
 def _extract_estate_or_interest(
     markdown: str, doc_id: str
 ) -> FieldWithProvenance[Literal["fee_simple", "leasehold", "easement", "life_estate", "other"]] | None:
-    """Map free-text estate description back into the schema literal."""
+    """Map free-text estate description back into the schema literal.
 
+    Handles:
+    - 'estate or interest ... is Fee Simple'  (traditional ALTA)
+    - 'Fee Simple interest' or standalone 'Fee Simple' near interest keywords
+    - ALTA 2021 format variations
+    """
+
+    # Primary: traditional "estate or interest ... Fee Simple" phrase
     match = re.search(
         r"estate\s+or\s+interest[^.]{0,200}?(Fee\s+Simple|Leasehold|Easement|Life\s+Estate)",
         markdown,
         re.IGNORECASE,
     )
+    # Fallback: 'Fee Simple interest' or 'interest is Fee Simple' etc.
+    if not match:
+        match = re.search(
+            r"(Fee\s+Simple|Leasehold|Easement|Life\s+Estate)\s+(?:interest|estate)",
+            markdown,
+            re.IGNORECASE,
+        )
+    # Fallback: near 'interest' or 'estate' context within 100 chars
+    if not match:
+        match = re.search(
+            r"(?:interest|estate|title)\s+(?:is|in|to|:)\s{0,10}(Fee\s+Simple|Leasehold|Easement|Life\s+Estate)",
+            markdown,
+            re.IGNORECASE,
+        )
     if not match:
         return None
     raw = match.group(1).lower().replace(" ", "_")
