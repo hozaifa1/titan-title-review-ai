@@ -99,12 +99,39 @@ def _token_windows(text: str, chunk_tokens: int, overlap_tokens: int) -> list[tu
     return windows
 
 
+_CONTEXT_WINDOW_CHARS = 4000  # ~1K tokens of context around the chunk
+
+
+def _doc_window_around(full_doc: str, chunk: str) -> str:
+    """Return a small slice of the document centred on where ``chunk`` appears.
+
+    The chunker calls this for every chunk in a doc. Sending the full doc
+    each time burned ~600K tokens on a 37-page commitment — enough to
+    exhaust any free tier in a single eval. The chunk's neighbourhood is
+    almost always enough context for a one-sentence situator: section
+    headers above, neighbouring schedule references, etc.
+    """
+
+    needle = chunk[:200].strip()
+    if needle:
+        index = full_doc.find(needle)
+        if index >= 0:
+            start = max(0, index - _CONTEXT_WINDOW_CHARS // 2)
+            end = min(len(full_doc), index + len(chunk) + _CONTEXT_WINDOW_CHARS // 2)
+            return full_doc[start:end]
+    # Fallback: just take the head of the doc (typically has the title block).
+    return full_doc[:_CONTEXT_WINDOW_CHARS]
+
+
 async def _context_sentence(full_doc: str, chunk: str, title_document: TitleDocument, use_gemini: bool) -> str:
     """Generate a one-sentence chunk context via the LLM client, with heuristic fallback.
 
     ``use_gemini`` is retained for backwards compatibility but now toggles the
-    full multi-provider chain (Gemini → Groq → OpenRouter). If every provider
-    fails or no key is configured, we degrade to the heuristic context line.
+    full multi-provider chain. If every provider fails or no key is configured
+    we degrade to the heuristic context line.
+
+    Token cost: a 4K-char window around the chunk, NOT the full doc — cuts
+    chunker tokens ~30x and prevents free-tier exhaustion on long commitments.
     """
 
     settings = get_settings()
@@ -112,11 +139,14 @@ async def _context_sentence(full_doc: str, chunk: str, title_document: TitleDocu
         try:
             from titan.llm_client import get_llm_client
 
+            window = _doc_window_around(full_doc, chunk)
             prompt = (
                 "You are creating contextual retrieval chunks for a title-review system. "
-                "Given the full document and one chunk, write one concise sentence that "
-                "situates the chunk by document section and subject. Return only the sentence.\n\n"
-                f"Full document:\n{full_doc[:120000]}\n\nChunk:\n{chunk[:8000]}"
+                "Given the surrounding document context and one chunk, write one concise "
+                "sentence that situates the chunk by document section and subject. "
+                "Return only the sentence.\n\n"
+                f"Document type: {title_document.doc_type}\n"
+                f"Surrounding context:\n{window}\n\nChunk:\n{chunk[:6000]}"
             )
             result = await get_llm_client().generate_text(prompt, temperature=0.0)
             if result.text:

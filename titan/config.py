@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     # If every provider hangs we surface ``LLMUnavailableError`` instead of stalling.
     # Six providers × two attempts × 15s ≈ 180s upper bound.
     llm_total_timeout_seconds: float = Field(default=120.0, alias="TITAN_LLM_TOTAL_TIMEOUT")
+    # Persist LLM responses to ``data/.llm_cache/`` keyed by SHA-256 of prompt+config.
+    # Eval reruns become near-free — same prompt returns cached output without
+    # touching any provider. Disable in tests that need fresh model output.
+    llm_cache_enabled: bool = Field(default=True, alias="TITAN_LLM_CACHE")
 
     # Vector store
     qdrant_url: str | None = Field(default=None, alias="QDRANT_URL")

@@ -236,7 +236,10 @@ def _llm_extraction_prompt(markdown: str, doc_type: DocType, doc_id: str, heuris
         f"Document id: {doc_id}\nDocument type: {doc_type}\n\n"
         f"Output schema shape (return strict JSON in this format):\n{schema_hint}\n\n"
         f"Heuristic regex pre-extraction (use as a hint; correct mistakes, fill gaps):\n{seed_json}\n\n"
-        f"Document markdown:\n{markdown[:80000]}"
+        # Cap doc body at 40K chars (~10K tokens). Larger inputs exhaust
+        # free-tier quotas without measurably improving field accuracy —
+        # title docs have most relevant data in Schedule A/B near the head.
+        f"Document markdown:\n{markdown[:40000]}"
     )
 
 

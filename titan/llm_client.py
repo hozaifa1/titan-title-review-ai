@@ -177,6 +177,16 @@ class LLMClient:
         if not providers:
             raise LLMUnavailableError("No LLM provider configured")
 
+        # Check the content-hash cache before spending any quota. This makes
+        # iterative eval runs effectively free — same prompt returns cached
+        # output without burning daily-tier limits on any provider.
+        if self.settings.llm_cache_enabled:
+            from titan import llm_cache
+
+            cached = llm_cache.get(prompt, temperature, response_json)
+            if cached is not None:
+                return cached
+
         sem = self._ensure_sem()
         total_budget = self.settings.llm_total_timeout_seconds
 
@@ -187,11 +197,17 @@ class LLMClient:
                 )
 
         try:
-            return await asyncio.wait_for(_gated(), timeout=total_budget)
+            result = await asyncio.wait_for(_gated(), timeout=total_budget)
         except asyncio.TimeoutError as exc:
             raise LLMUnavailableError(
                 f"LLM call exceeded total budget {total_budget}s across providers {providers}"
             ) from exc
+
+        if self.settings.llm_cache_enabled:
+            from titan import llm_cache
+
+            llm_cache.put(prompt, temperature, response_json, result)
+        return result
 
     async def _generate_text_inner(
         self,
