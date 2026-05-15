@@ -1,18 +1,22 @@
 """Eval metrics for Titan.
 
-Implements the four metrics the architecture calls for in §7:
+Implements the metrics the architecture calls for in §7 and §11:
 
-* ``field_edit_distance`` — Levenshtein distance between produced section text
-  and gold section text, normalized by gold length, averaged across sections.
+* ``field_edit_distance`` — token-level Levenshtein between produced section
+  text and gold section text, normalized by gold length, averaged across
+  sections.
 * ``retrieval_recall_at_k`` — fraction of gold ``(doc_id, page)`` spans that
   appear in the top-k retrieved chunks.
-* ``faithfulness`` — RAGAS-style: for each generated claim, does the retrieved
-  context support it? Offline fallback uses token-overlap entailment;
-  RAGAS/Gemini is used when ``ragas`` is installed and ``GOOGLE_API_KEY`` is
-  configured.
+* ``faithfulness`` — RAGAS-style: for each generated claim, is it supported
+  by the retrieved context? Discrete binary judge (cosine threshold),
+  averaged across claims. Tighter than the prior ``(cos+1)/2`` mapping.
 * ``answer_relevancy`` — RAGAS-style: how well does the answer match the
-  question. Offline fallback is cosine similarity between BGE-M3-style
-  embeddings of the question and the answer.
+  question. Offline fallback is cosine similarity between BGE-M3 embeddings
+  of the question and the answer.
+* ``citation_accuracy`` (§11.1) — fraction of cited sentences whose citation
+  snippet actually contains/supports the sentence's claim.
+* ``rule_application_rate`` (§11.1) — fraction of active rules with which
+  the produced draft visibly complies.
 
 Every metric is deterministic, returns floats in ``[0, 1]``, and degrades
 gracefully when no Gemini key or RAGAS package is available.
@@ -26,7 +30,12 @@ from typing import Iterable
 
 from titan.index.embed import DenseEmbedder, cosine
 from titan.index.models import SearchHit
-from titan.schemas import CitedSentence, TitleReviewSection, TitleReviewSummary
+from titan.schemas import (
+    CitedSentence,
+    Rule,
+    TitleReviewSection,
+    TitleReviewSummary,
+)
 
 SECTION_FIELDS: tuple[str, ...] = (
     "s1_vesting_and_estate",
@@ -89,6 +98,10 @@ def retrieval_recall_at_k(
     return matched / len(gold_spans)
 
 
+FAITHFULNESS_THRESHOLD = 0.55  # cosine cutoff for "claim supported by chunk"
+CITATION_ACCURACY_THRESHOLD = 0.45  # cosine cutoff for "snippet supports claim"
+
+
 def faithfulness(
     produced: TitleReviewSummary,
     hits: list[SearchHit],
@@ -96,29 +109,151 @@ def faithfulness(
 ) -> float:
     """Fraction of generated claims supported by the retrieved context.
 
-    Each claim is scored by the maximum cosine similarity (clamped to ``[0, 1]``)
-    between the claim's embedding and the embedding of each retrieved chunk.
-    This mirrors RAGAS faithfulness semantics in an LLM-free way: it rewards
-    paraphrase that stays on-topic with the source chunks and penalises
-    drift, instead of demanding lexical overlap.
+    Discrete RAGAS-style judge: a claim is "supported" iff its best cosine
+    similarity against any retrieved chunk meets ``FAITHFULNESS_THRESHOLD``.
+    The aggregate is the supported fraction. This matches RAGAS faithfulness
+    semantics (binary per-claim verdict, not a soft average) without an LLM.
     """
 
     claims = list(_iter_claims(produced))
     if not claims or not hits:
         return 0.0
     enc = embedder or DenseEmbedder()
-    chunk_vectors = enc.embed(
-        [hit.chunk.contextual_text for hit in hits]
-    )
+    chunk_vectors = enc.embed([hit.chunk.contextual_text for hit in hits])
     claim_vectors = enc.embed(claims)
-    scores: list[float] = []
+    supported = 0
     for claim_vector in claim_vectors:
         best = max(
             (cosine(claim_vector, chunk_vector) for chunk_vector in chunk_vectors),
-            default=0.0,
+            default=-1.0,
         )
-        scores.append(max(0.0, min(1.0, (best + 1.0) / 2.0)))
-    return sum(scores) / len(scores)
+        if best >= FAITHFULNESS_THRESHOLD:
+            supported += 1
+    return supported / len(claims)
+
+
+def citation_accuracy(
+    produced: TitleReviewSummary,
+    embedder: DenseEmbedder | None = None,
+) -> tuple[float, dict[str, float]]:
+    """Fraction of cited sentences whose snippet actually supports the claim.
+
+    For each ``CitedSentence`` with at least one citation that carries a
+    snippet, we check whether the snippet text supports the sentence text.
+    Support is judged by both lexical overlap (Jaccard of significant tokens
+    >= 0.10) AND embedding similarity above ``CITATION_ACCURACY_THRESHOLD``.
+    Either signal alone is too lenient (lexical alone misses paraphrase;
+    embedding alone rewards topical drift); requiring both raises the bar.
+
+    Returns ``(overall_score, per_section_scores)``.
+    """
+
+    enc = embedder or DenseEmbedder()
+    per_section: dict[str, float] = {}
+    overall_supported = 0
+    overall_total = 0
+
+    for field in SECTION_FIELDS:
+        section: TitleReviewSection = getattr(produced, field)
+        section_supported = 0
+        section_total = 0
+        for sentence in section.summary + section.bullet_findings:
+            verdict = _citation_supports(sentence, enc)
+            if verdict is None:
+                continue
+            section_total += 1
+            overall_total += 1
+            if verdict:
+                section_supported += 1
+                overall_supported += 1
+        if section_total:
+            per_section[field] = round(section_supported / section_total, 4)
+    score = overall_supported / overall_total if overall_total else 0.0
+    return score, per_section
+
+
+def rule_application_rate(
+    produced: TitleReviewSummary,
+    rules: list[Rule],
+) -> tuple[float, dict[str, str]]:
+    """Fraction of active rules with which the produced draft visibly complies.
+
+    Heuristic per rule: extract content tokens (>=4 chars, non-stopword) from
+    the rule text and check whether at least 30% appear anywhere in the
+    produced draft. This rewards rules whose distinctive vocabulary the
+    drafter has actually adopted, without an LLM judge.
+
+    Returns ``(score, per_rule_verdicts)`` where verdicts are one of
+    ``compliant``, ``non_compliant``, ``not_applicable``.
+    """
+
+    if not rules:
+        return 0.0, {}
+    draft_tokens = {
+        token
+        for token in re.findall(r"\w+", _summary_text(produced).lower())
+        if len(token) >= 4
+    }
+    verdicts: dict[str, str] = {}
+    compliant = 0
+    applicable = 0
+    for rule in rules:
+        rule_tokens = {
+            token
+            for token in re.findall(r"\w+", rule.text.lower())
+            if len(token) >= 4 and token not in _STOPWORDS
+        }
+        if not rule_tokens:
+            verdicts[rule.id] = "not_applicable"
+            continue
+        applicable += 1
+        overlap = len(rule_tokens & draft_tokens) / len(rule_tokens)
+        if overlap >= 0.30:
+            verdicts[rule.id] = "compliant"
+            compliant += 1
+        else:
+            verdicts[rule.id] = "non_compliant"
+    score = compliant / applicable if applicable else 0.0
+    return score, verdicts
+
+
+def _citation_supports(sentence: CitedSentence, enc: DenseEmbedder) -> bool | None:
+    """Evaluate whether at least one of a sentence's citations supports it.
+
+    Returns ``None`` when there is nothing to score (no citation or empty
+    snippet) — those sentences are excluded from the citation-accuracy
+    denominator.
+    """
+
+    candidate_snippets = [
+        citation.snippet for citation in sentence.citations if citation.snippet
+    ]
+    if not candidate_snippets or not sentence.text.strip():
+        return None
+    claim_tokens = {
+        token
+        for token in re.findall(r"\w+", sentence.text.lower())
+        if len(token) >= 4 and token not in _STOPWORDS
+    }
+    if not claim_tokens:
+        return None
+    claim_vec = enc.embed([sentence.text])[0]
+    snippet_vecs = enc.embed(candidate_snippets)
+    for snippet, snippet_vec in zip(candidate_snippets, snippet_vecs):
+        snippet_tokens = {
+            token
+            for token in re.findall(r"\w+", snippet.lower())
+            if len(token) >= 4 and token not in _STOPWORDS
+        }
+        if not snippet_tokens:
+            continue
+        jaccard = len(claim_tokens & snippet_tokens) / max(
+            len(claim_tokens | snippet_tokens), 1
+        )
+        sim = cosine(claim_vec, snippet_vec)
+        if jaccard >= 0.10 and sim >= CITATION_ACCURACY_THRESHOLD:
+            return True
+    return False
 
 
 def answer_relevancy(

@@ -380,14 +380,18 @@ def _fallback_section(
     rule_set: RuleSet | None = None,
     few_shot: list[EditEvent] | None = None,
 ) -> TitleReviewSection:
-    citation = _citation_from_hit(hits[0]) if hits else _citation_from_doc(title_document)
     baseline_text = _fallback_summary_sentence(spec, title_document, structured)
     summary_text = _apply_few_shot_style(baseline_text, few_shot or [])
     adopted_operator_wording = summary_text is not baseline_text and summary_text != baseline_text
-    findings = [] if adopted_operator_wording else _fallback_findings(spec, structured, citation)
+    summary_citation = _citation_for_text(summary_text, hits, title_document)
+    findings = (
+        []
+        if adopted_operator_wording
+        else _fallback_findings(spec, structured, hits, title_document)
+    )
     gaps = _fallback_gaps(spec, structured)
     gaps.extend(_gaps_from_few_shot(few_shot or [], gaps))
-    findings.extend(_findings_from_rules(rule_set, citation))
+    findings.extend(_findings_from_rules(rule_set, summary_citation))
     flags = _apply_rule_flags(
         _baseline_flags(gaps, title_document),
         rule_set,
@@ -396,11 +400,22 @@ def _fallback_section(
     )
     return TitleReviewSection(
         section_name=spec.section_name,
-        summary=[CitedSentence(text=summary_text, citations=[citation], confidence="medium")],
+        summary=[CitedSentence(text=summary_text, citations=[summary_citation], confidence="medium")],
         bullet_findings=findings,
         gaps=gaps,
         flags=flags,
     )
+
+
+def _citation_for_text(
+    text: str, hits: list[SearchHit], title_document: TitleDocument
+) -> Citation:
+    """Pick the chunk best supporting ``text`` and build a sentence-narrowed citation."""
+
+    if not hits:
+        return _citation_from_doc(title_document)
+    best, _ = _best_hit_for_sentence(text, hits)
+    return _citation_from_hit_for_sentence(best, text)
 
 
 def _baseline_flags(
@@ -572,14 +587,24 @@ def _fallback_summary_sentence(spec: SectionSpec, title_document: TitleDocument,
     return f"Taxes and survey review includes {len(structured.get('taxes', []))} tax record(s) and {len(structured.get('survey_matters', []))} survey matter(s)."
 
 
-def _fallback_findings(spec: SectionSpec, structured: dict[str, Any], citation: Citation) -> list[CitedSentence]:
+def _fallback_findings(
+    spec: SectionSpec,
+    structured: dict[str, Any],
+    hits: list[SearchHit],
+    title_document: TitleDocument,
+) -> list[CitedSentence]:
+    """Per-finding citations chosen by lexical overlap, not a single shared citation."""
+
+    del spec
     findings: list[CitedSentence] = []
     for field_name, value in structured.items():
         if not value:
             continue
         text = _finding_text(field_name, value)
-        if text:
-            findings.append(CitedSentence(text=text, citations=[citation], confidence="medium"))
+        if not text:
+            continue
+        finding_citation = _citation_for_text(text, hits, title_document)
+        findings.append(CitedSentence(text=text, citations=[finding_citation], confidence="medium"))
     return findings[:5]
 
 
@@ -603,12 +628,11 @@ def _fallback_gaps(spec: SectionSpec, structured: dict[str, Any]) -> list[str]:
 
 
 def _normalize_section(section: TitleReviewSection, spec: SectionSpec, hits: list[SearchHit]) -> TitleReviewSection:
-    fallback = _citation_from_hit(hits[0]) if hits else None
     return section.model_copy(
         update={
             "section_name": spec.section_name,
-            "summary": [_normalize_sentence(sentence, hits, fallback) for sentence in section.summary],
-            "bullet_findings": [_normalize_sentence(sentence, hits, fallback) for sentence in section.bullet_findings],
+            "summary": [_normalize_sentence(sentence, hits) for sentence in section.summary],
+            "bullet_findings": [_normalize_sentence(sentence, hits) for sentence in section.bullet_findings],
         }
     )
 
@@ -616,22 +640,69 @@ def _normalize_section(section: TitleReviewSection, spec: SectionSpec, hits: lis
 def _normalize_sentence(
     sentence: CitedSentence,
     hits: list[SearchHit],
-    fallback: Citation | None,
 ) -> CitedSentence:
-    citations = [_normalize_citation(citation, hits) for citation in sentence.citations]
-    citations = [citation for citation in citations if citation is not None]
-    if not citations and fallback:
-        citations = [fallback]
-    return sentence.model_copy(update={"citations": citations})
+    """Re-anchor each cited sentence to the chunk that best supports it.
+
+    We never trust a Gemini-emitted citation blindly: we always rebuild the
+    Citation from a real `SearchHit` whose contextual_text actually overlaps
+    the sentence. If nothing overlaps even weakly, downgrade confidence and
+    fall back to the top-ranked hit (transparent over silent).
+    """
+
+    citations: list[Citation] = []
+    seen_chunks: set[str] = set()
+    confidence = sentence.confidence
+
+    # Honour any model-emitted citation that already carries a snippet AND
+    # we can match its doc_id back to a real retrieved chunk.
+    for citation in sentence.citations:
+        match = next(
+            (hit for hit in hits if hit.chunk.doc_id == citation.doc_id),
+            None,
+        )
+        if match and match.chunk.chunk_id not in seen_chunks:
+            citations.append(_citation_from_hit_for_sentence(match, sentence.text))
+            seen_chunks.add(match.chunk.chunk_id)
+
+    if not citations and hits:
+        best, score = _best_hit_for_sentence(sentence.text, hits)
+        citations.append(_citation_from_hit_for_sentence(best, sentence.text))
+        seen_chunks.add(best.chunk.chunk_id)
+        if score < 0.10:
+            confidence = "low"
+
+    return sentence.model_copy(update={"citations": citations, "confidence": confidence})
 
 
-def _normalize_citation(citation: Citation, hits: list[SearchHit]) -> Citation | None:
-    if citation.char_span and citation.snippet:
-        return citation
+def _best_hit_for_sentence(sentence_text: str, hits: list[SearchHit]) -> tuple[SearchHit, float]:
+    """Pick the chunk with the highest token overlap with the sentence.
+
+    Falls back to ``hits[0]`` (RRF/rerank winner) if every chunk has zero
+    overlap, so each sentence still carries a real provenance pointer.
+    """
+
+    sentence_tokens = {
+        token
+        for token in re.findall(r"\w+", sentence_text.lower())
+        if len(token) >= 4 and token not in _GENERIC_WORDS
+    }
+    if not sentence_tokens:
+        return hits[0], 0.0
+    best_hit = hits[0]
+    best_score = 0.0
     for hit in hits:
-        if citation.doc_id == hit.chunk.doc_id:
-            return _citation_from_hit(hit)
-    return None
+        chunk_tokens = {
+            token
+            for token in re.findall(r"\w+", hit.chunk.contextual_text.lower())
+            if len(token) >= 4
+        }
+        if not chunk_tokens:
+            continue
+        overlap = len(sentence_tokens & chunk_tokens) / len(sentence_tokens)
+        if overlap > best_score:
+            best_score = overlap
+            best_hit = hit
+    return best_hit, best_score
 
 
 def _citation_from_hit(hit: SearchHit) -> Citation:
@@ -642,6 +713,48 @@ def _citation_from_hit(hit: SearchHit) -> Citation:
         page=prov.page,
         char_span=span,
         snippet=(prov.snippet or hit.chunk.text[:200]).strip(),
+    )
+
+
+def _citation_from_hit_for_sentence(hit: SearchHit, sentence_text: str) -> Citation:
+    """Build a Citation, narrowing the snippet to the most relevant window of the chunk.
+
+    If we can locate a meaningful sentence-token cluster inside the chunk text,
+    use that as the citation snippet (much higher signal than the chunk's
+    first 200 chars). Otherwise fall back to the existing provenance.
+    """
+
+    base = _citation_from_hit(hit)
+    sentence_tokens = [
+        token
+        for token in re.findall(r"\w+", sentence_text.lower())
+        if len(token) >= 4 and token not in _GENERIC_WORDS
+    ]
+    if not sentence_tokens:
+        return base
+
+    chunk_text = hit.chunk.text or hit.chunk.contextual_text
+    if not chunk_text:
+        return base
+
+    lowered = chunk_text.lower()
+    hits_in_chunk = [lowered.find(tok) for tok in sentence_tokens]
+    valid = [pos for pos in hits_in_chunk if pos >= 0]
+    if not valid:
+        return base
+
+    # Snippet centred around the densest matching region.
+    centre = sum(valid) // len(valid)
+    start = max(0, centre - 90)
+    end = min(len(chunk_text), centre + 110)
+    snippet = chunk_text[start:end].strip()
+    prov = hit.chunk.provenance
+    base_start = (prov.char_span[0] if prov.char_span else 0)
+    return base.model_copy(
+        update={
+            "char_span": (base_start + start, base_start + end),
+            "snippet": snippet[:200],
+        }
     )
 
 

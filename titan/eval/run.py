@@ -26,9 +26,11 @@ from titan.eval.build_set import EvalCase, load_eval_set
 from titan.eval.metrics import (
     SectionEditDistance,
     answer_relevancy,
+    citation_accuracy,
     faithfulness,
     field_edit_distance,
     retrieval_recall_at_k,
+    rule_application_rate,
 )
 from titan.index.chunker import chunk_title_document
 from titan.index.embed import embed_chunks
@@ -37,7 +39,7 @@ from titan.learn.distill import RuleStore
 from titan.learn.memory import EditMemory
 from titan.persist.sqlite import load_edit_events
 from titan.retrieve.hybrid import HybridRetriever
-from titan.schemas import TitleDocument
+from titan.schemas import Rule, TitleDocument, TitleReviewSummary
 
 Condition = Literal["pre", "post"]
 
@@ -55,7 +57,11 @@ class CaseResult:
     retrieval_recall_at_5: float
     faithfulness: float
     answer_relevancy: float
+    citation_accuracy: float
+    rule_application_rate: float
     per_section_edit_distance: list[dict[str, float | int | str]] = field(default_factory=list)
+    per_section_citation_accuracy: dict[str, float] = field(default_factory=dict)
+    rule_verdicts: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -200,6 +206,9 @@ async def _run_case(
     recall = retrieval_recall_at_k(case.gold_summary, hits, k=5)
     faith = faithfulness(summary, hits, embedder=dense_embedder)
     relevancy = answer_relevancy(summary, EVAL_QUERY, embedder=dense_embedder)
+    cit_score, cit_per_section = citation_accuracy(summary, embedder=dense_embedder)
+    active_rules = _active_rules_for_summary(rule_store, summary) if rule_store else []
+    rule_score, rule_verdicts = rule_application_rate(summary, active_rules)
 
     return CaseResult(
         doc_id=case.doc_id,
@@ -207,8 +216,25 @@ async def _run_case(
         retrieval_recall_at_5=recall,
         faithfulness=faith,
         answer_relevancy=relevancy,
+        citation_accuracy=cit_score,
+        rule_application_rate=rule_score,
         per_section_edit_distance=[_section_distance_dict(item) for item in per_section],
+        per_section_citation_accuracy=cit_per_section,
+        rule_verdicts=rule_verdicts,
     )
+
+
+def _active_rules_for_summary(rule_store: RuleStore, _summary: TitleReviewSummary) -> list[Rule]:
+    """Aggregate rules across every section that has a YAML file on disk."""
+
+    from titan.draft.orchestrator import SECTION_SPECS
+
+    aggregated: list[Rule] = []
+    for spec in SECTION_SPECS:
+        rule_set = rule_store.load(spec.field_name)
+        if rule_set:
+            aggregated.extend(rule_set.rules)
+    return aggregated
 
 
 def _section_distance_dict(item: SectionEditDistance) -> dict[str, float | int | str]:
@@ -227,6 +253,8 @@ def _aggregate(cases: list[CaseResult]) -> dict[str, float]:
             "retrieval_recall_at_5": 0.0,
             "faithfulness": 0.0,
             "answer_relevancy": 0.0,
+            "citation_accuracy": 0.0,
+            "rule_application_rate": 0.0,
         }
     n = len(cases)
     return {
@@ -234,6 +262,8 @@ def _aggregate(cases: list[CaseResult]) -> dict[str, float]:
         "retrieval_recall_at_5": round(sum(c.retrieval_recall_at_5 for c in cases) / n, 4),
         "faithfulness": round(sum(c.faithfulness for c in cases) / n, 4),
         "answer_relevancy": round(sum(c.answer_relevancy for c in cases) / n, 4),
+        "citation_accuracy": round(sum(c.citation_accuracy for c in cases) / n, 4),
+        "rule_application_rate": round(sum(c.rule_application_rate for c in cases) / n, 4),
     }
 
 
@@ -251,6 +281,10 @@ def _compute_improvement(
         "retrieval_recall_at_5_delta": round(
             post["retrieval_recall_at_5"] - pre["retrieval_recall_at_5"], 4
         ),
+        "citation_accuracy_delta": round(
+            post["citation_accuracy"] - pre["citation_accuracy"], 4
+        ),
+        "rule_application_rate_post": round(post["rule_application_rate"], 4),
     }
 
 
@@ -298,10 +332,12 @@ def render_markdown_table(report: EvalReport) -> str:
     """Render a README-friendly markdown comparison table."""
 
     rows = [
-        ("Faithfulness (higher = better)", "faithfulness", "+"),
+        ("Faithfulness (binary judge, higher = better)", "faithfulness", "+"),
         ("Answer relevancy (higher = better)", "answer_relevancy", "+"),
         ("Field-level edit distance (lower = better)", "field_edit_distance", "-"),
         ("Retrieval recall@5", "retrieval_recall_at_5", "+"),
+        ("Citation accuracy (higher = better)", "citation_accuracy", "+"),
+        ("Rule application rate (higher = better)", "rule_application_rate", "+"),
     ]
     lines = [
         "| Metric | Condition A (no learning) | Condition B (with learning) | Delta |",

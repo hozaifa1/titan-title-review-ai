@@ -25,6 +25,8 @@ from titan.schemas import (
     Lien,
     PartyParty,
     Provenance,
+    ScheduleBException,
+    ScheduleBRequirement,
     TitleDocument,
 )
 
@@ -139,22 +141,292 @@ def _heuristic_extract(markdown: str, doc_type: DocType, parsed_doc: ParsedDoc |
     chain = _extract_chain(doc_type, parties, provenance)
     liens = _extract_liens(doc_type, parties, markdown, provenance)
 
+    # ALTA-commitment Schedule A fields
+    effective_date = _extract_effective_date(markdown, doc_id)
+    proposed_insured = _extract_proposed_insured(markdown, doc_id)
+    estate_or_interest = _extract_estate_or_interest(markdown, doc_id)
+
+    # ALTA Schedule B parsers
+    schedule_b_requirements = _extract_schedule_b_requirements(markdown, doc_id)
+    schedule_b_exceptions = _extract_schedule_b_exceptions(markdown, doc_id)
+
+    if doc_type == "title_commitment" and not (
+        effective_date or proposed_insured or estate_or_interest
+    ):
+        warnings.append("Schedule A fields could not be extracted from this commitment.")
+
     return TitleDocument(
         doc_id=doc_id,
         doc_type=doc_type,
         file_path=file_path,
         page_count=page_count,
         parsed_at=date.today(),
+        effective_date=effective_date,
+        proposed_insured=proposed_insured,
+        estate_or_interest=estate_or_interest,
         policy_amount=policy_amount,
         legal_description=legal_description,
         parties=parties,
         vesting=[party for party in parties if party.role in {"owner", "grantee", "buyer"}],
         chain_of_title=chain,
         open_liens=liens,
+        schedule_b_requirements=schedule_b_requirements,
+        schedule_b_exceptions=schedule_b_exceptions,
         has_recording_stamp=bool(re.search(r"\brecord(?:ed|ing)?\b", markdown, re.IGNORECASE)),
         notarized=bool(re.search(r"\bnotary|notarial|acknowledged\b", markdown, re.IGNORECASE)) or None,
         extraction_warnings=warnings,
     )
+
+
+_DATE_FORMATS = (
+    "%m/%d/%Y",
+    "%m-%d-%Y",
+    "%Y-%m-%d",
+    "%B %d, %Y",
+    "%b %d, %Y",
+)
+
+
+def _extract_effective_date(markdown: str, doc_id: str) -> FieldWithProvenance[date] | None:
+    """Pull the ALTA Schedule A 'Effective Date' line."""
+
+    match = re.search(
+        r"Effective\s+Date[:\s]+([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|"
+        r"[A-Z][a-z]+\s+[0-9]{1,2},\s*[0-9]{4})",
+        markdown,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    raw = match.group(1).strip()
+    parsed = _parse_date(raw)
+    if not parsed:
+        return None
+    return FieldWithProvenance(
+        value=parsed,
+        confidence=0.85,
+        source=Provenance(
+            doc_id=doc_id,
+            page=1,
+            char_span=match.span(),
+            snippet=match.group(0)[:200],
+        ),
+    )
+
+
+def _parse_date(raw: str) -> date | None:
+    from datetime import datetime
+
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _extract_proposed_insured(markdown: str, doc_id: str) -> FieldWithProvenance[str] | None:
+    """First 'Proposed Insured: <name>' line wins; commitments often have several policies."""
+
+    match = re.search(
+        r"Proposed\s+Insured[:\s]+([A-Z][A-Za-z .,&'-]{2,120})",
+        markdown,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    name = _clean_name(match.group(1))
+    if not _is_name_like(name):
+        return None
+    return FieldWithProvenance(
+        value=name,
+        confidence=0.8,
+        source=Provenance(
+            doc_id=doc_id,
+            page=1,
+            char_span=match.span(),
+            snippet=match.group(0)[:200],
+        ),
+    )
+
+
+def _extract_estate_or_interest(
+    markdown: str, doc_id: str
+) -> FieldWithProvenance[Literal["fee_simple", "leasehold", "easement", "life_estate", "other"]] | None:
+    """Map free-text estate description back into the schema literal."""
+
+    match = re.search(
+        r"estate\s+or\s+interest[^.]{0,200}?(Fee\s+Simple|Leasehold|Easement|Life\s+Estate)",
+        markdown,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    raw = match.group(1).lower().replace(" ", "_")
+    value: Literal["fee_simple", "leasehold", "easement", "life_estate", "other"]
+    if "fee" in raw:
+        value = "fee_simple"
+    elif "lease" in raw:
+        value = "leasehold"
+    elif "easement" in raw:
+        value = "easement"
+    elif "life" in raw:
+        value = "life_estate"
+    else:
+        value = "other"
+    return FieldWithProvenance(
+        value=value,
+        confidence=0.85,
+        source=Provenance(
+            doc_id=doc_id,
+            page=1,
+            char_span=match.span(),
+            snippet=match.group(0)[:200],
+        ),
+    )
+
+
+def _extract_schedule_b_requirements(markdown: str, doc_id: str) -> list[ScheduleBRequirement]:
+    """Parse the 'I. Requirements:' lettered list found on ALTA commitments.
+
+    Captures bullets keyed ``a.``, ``b.``, ... up to the next major heading
+    (Schedule B Section II, Standard Exceptions, Schedule C, etc).
+    """
+
+    section = re.search(
+        r"(?:I\.\s+Requirements?|Schedule\s+B\s*[-–]?\s*Section\s+I[^\n]{0,120})"
+        r"(?P<body>.{50,6000}?)"
+        r"(?=II\.|Schedule\s+B\s*[-–]?\s*Section\s+II|Standard\s+Exceptions|Schedule\s+C|$)",
+        markdown,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not section:
+        return []
+    body = section.group("body")
+    bullets = re.findall(r"\n\s*([a-z])\.\s+([^\n]{20,400})", body)
+    out: list[ScheduleBRequirement] = []
+    for letter, text in bullets[:12]:
+        cleaned = re.sub(r"\s+", " ", text).strip(" .;:-")
+        category = _classify_requirement(cleaned)
+        out.append(
+            ScheduleBRequirement(
+                requirement_id=f"B-I-{letter.lower()}",
+                text=cleaned,
+                category=category,
+                addressed_to=_addressed_to(cleaned),
+                source=Provenance(
+                    doc_id=doc_id,
+                    page=_likely_page(markdown, section.start()),
+                    char_span=(section.start(), section.end()),
+                    snippet=cleaned[:200],
+                ),
+            )
+        )
+    return out
+
+
+def _extract_schedule_b_exceptions(markdown: str, doc_id: str) -> list[ScheduleBException]:
+    """Parse the 'II.' numbered exceptions list on ALTA commitments."""
+
+    section = re.search(
+        r"(?:II\.\s+|Schedule\s+B\s*[-–]?\s*Section\s+II[^\n]{0,200})"
+        r"(?P<body>.{50,8000}?)"
+        r"(?=Schedule\s+C|Specific\s+exceptions\b|Endorsements|$)",
+        markdown,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not section:
+        return []
+    body = section.group("body")
+    bullets = re.findall(r"\n\s*([0-9]{1,2})\.\s+([^\n]{20,500})", body)
+    out: list[ScheduleBException] = []
+    for number, text in bullets[:15]:
+        cleaned = re.sub(r"\s+", " ", text).strip(" .;:-")
+        category = _classify_exception(cleaned)
+        out.append(
+            ScheduleBException(
+                exception_id=f"B-II-{number}",
+                text=cleaned,
+                category=category,
+                is_standard=int(number) <= 7,  # Ohio ALTA: items 1-7 are standard exceptions
+                source=Provenance(
+                    doc_id=doc_id,
+                    page=_likely_page(markdown, section.start()),
+                    char_span=(section.start(), section.end()),
+                    snippet=cleaned[:200],
+                ),
+            )
+        )
+    return out
+
+
+def _classify_requirement(text: str) -> Literal[
+    "payment", "execution_recordation", "release_of_lien",
+    "satisfaction_of_judgment", "death_administration",
+    "entity_authority", "survey", "other",
+]:
+    lowered = text.lower()
+    if "pay" in lowered and ("amount" in lowered or "premium" in lowered or "fee" in lowered):
+        return "payment"
+    if "record" in lowered or "deliver" in lowered or "sign" in lowered:
+        return "execution_recordation"
+    if "release" in lowered or "satisf" in lowered and "mortgage" in lowered:
+        return "release_of_lien"
+    if "judgment" in lowered:
+        return "satisfaction_of_judgment"
+    if "death" in lowered or "estate of" in lowered or "administra" in lowered:
+        return "death_administration"
+    if "authority" in lowered or "good standing" in lowered or "corporate resolution" in lowered:
+        return "entity_authority"
+    if "survey" in lowered:
+        return "survey"
+    return "other"
+
+
+def _classify_exception(text: str) -> Literal[
+    "standard", "tax", "lien", "easement", "restriction",
+    "survey_matter", "mineral_rights", "lease", "other",
+]:
+    lowered = text.lower()
+    if "tax" in lowered or "assessment" in lowered:
+        return "tax"
+    if "easement" in lowered or "right of way" in lowered:
+        return "easement"
+    if "encroach" in lowered or "survey" in lowered:
+        return "survey_matter"
+    if "oil" in lowered or "gas" in lowered or "mineral" in lowered:
+        return "mineral_rights"
+    if "lease" in lowered or "tenant" in lowered:
+        return "lease"
+    if "restrict" in lowered or "covenant" in lowered:
+        return "restriction"
+    if "lien" in lowered or "mortgage" in lowered or "judgment" in lowered:
+        return "lien"
+    if re.search(r"\b(defects?|adverse claims?|gap exception)\b", lowered):
+        return "standard"
+    return "other"
+
+
+def _addressed_to(text: str) -> Literal["seller", "buyer", "lender", "title_co", "other"]:
+    lowered = text.lower()
+    if "seller" in lowered:
+        return "seller"
+    if "buyer" in lowered or "purchaser" in lowered:
+        return "buyer"
+    if "lender" in lowered or "mortgagee" in lowered:
+        return "lender"
+    if "title agent" in lowered or "underwriter" in lowered or "title insurance company" in lowered:
+        return "title_co"
+    return "other"
+
+
+def _likely_page(markdown: str, offset: int) -> int:
+    """Best-effort page number for a span, using ``## Page N`` markers if present."""
+
+    page = 1
+    for match in re.finditer(r"^##\s*Page\s+(\d+)", markdown[:offset], re.MULTILINE):
+        page = int(match.group(1))
+    return page
 
 
 def _source(doc_id: str, markdown: str, page: int = 1) -> Provenance:
