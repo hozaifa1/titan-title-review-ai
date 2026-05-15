@@ -1,10 +1,57 @@
-version: '3.8'
 services:
   qdrant:
     image: qdrant/qdrant:latest
+    container_name: titan-qdrant
+    restart: unless-stopped
     ports:
-      # Bind to loopback only — local dev / reviewer demo, not a public service.
+      # Bound to loopback only — local dev / reviewer demo, not a public service.
       - "127.0.0.1:6333:6333"
       - "127.0.0.1:6334:6334"
     volumes:
       - ./qdrant_storage:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  titan:
+    build: .
+    container_name: titan-app
+    depends_on:
+      qdrant:
+        condition: service_started
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      # Forward any keys present on the host; absence falls back to local models.
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
+    volumes:
+      - ./data:/app/data
+      - ./eval:/app/eval
+      - ./rules:/app/rules
+      - ./examples:/app/examples
+    # Default command is a no-op CLI invocation; override with
+    #   docker compose run --rm titan demo-ingest
+    command: ["--help"]
+
+  streamlit:
+    build: .
+    container_name: titan-streamlit
+    depends_on:
+      qdrant:
+        condition: service_started
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    ports:
+      - "127.0.0.1:8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./eval:/app/eval
+      - ./rules:/app/rules
+      - ./examples:/app/examples
+      - ./streamlit_app.py:/app/streamlit_app.py
+    entrypoint: ["streamlit", "run", "streamlit_app.py", "--server.address=0.0.0.0", "--server.headless=true"]

@@ -1,44 +1,31 @@
-# Python
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
 *.egg
-MANIFEST
 
-# Virtual Environments
-.venv
+# --- Virtualenvs ---
+.venv/
 venv/
 env/
 ENV/
-.env.local
-.env.*.local
-env.bak/
-venv.bak/
-.env
 
-# UV
-.uv/
-uv.lock
+# --- Tooling caches ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.hypothesis/
 
-# IDE
+# --- IDE ---
 .vscode/
 .idea/
 *.swp
@@ -46,40 +33,52 @@ uv.lock
 *~
 .DS_Store
 Thumbs.db
-*.sublime-project
-*.sublime-workspace
-.project
-.pydevproject
-.settings/
-*.iml
 
-# Testing
-.pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.hypothesis/
-.nox/
-.mypy_cache/
-.dmypy.json
-dmypy.json
-scripts/
-tests/
+# --- Env / secrets ---
+.env
+.env.local
+.env.*.local
+credentials.json
+secrets/
+*.pem
+*.key
+*.crt
+*_key.json
+.langfuse_token
 
-# Type checking
-.mypy_cache/
-.pytype/
-*.pyi
+# --- Logs / scratch output ---
+*.log
+logs/
+log.txt
+*.tmp
+*.bak
+*.orig
 
-# Linting
-.ruff_cache/
-.pylint.d/
+# --- Generic ad-hoc text dumps at repo root ---
+/eval_out.txt
+/pytest*.txt
 
-# Data & Models
-data/raw/
-data/out/*
-data/eval/
+# --- Build artifacts / archives ---
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+*.ipynb
+
+# --- Database / SQLite ---
+*.db
+*.sqlite
+*.sqlite3
+data/titan.db
+
+# --- Qdrant local storage ---
+qdrant_storage/
+snapshots/
+
+# --- Model weights / embeddings ---
 models/
 *.pth
 *.pt
@@ -87,128 +86,45 @@ models/
 *.ckpt
 *.safetensors
 *.onnx
-
-# Jupyter Notebooks
-.ipynb_checkpoints
-*.ipynb
-*.npy
-*.npz
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-data/*.db
-
-# Logs
-logs/
-*.log
-log.txt
-
-# Environment & Config
-.env
-.env.local
-.env.*.local
-credentials.json
-secrets/
-
-# Cache
-.cache/
-*.cache
-node_modules/
-.npm/
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.bak
-*.swp
-.DS_Store
-
-# LLM & ML Related
-langfuse_exports/
-*.langfuse
-outputs/
-results/
 *.pkl
 *.pickle
 faiss_index/
 embeddings/
-vector_store/
 
-# Qdrant
-qdrant_storage/
-snapshots/
+# --- Generated pipeline output ---
+data/out/
+data/.llm_cache/
+data/eval/
 
-# API Keys & Credentials
-*.pem
-*.key
-*.crt
-*_key.json
-credentials/
-tokens/
-.langfuse_token
+# --- LLM tracing exports ---
+langfuse_exports/
+*.langfuse
 
-# Documentation generated
-site/
-docs/_build/
-docs/.buildinfo
+# --- Streamlit / FastAPI caches ---
+.streamlit/secrets.toml
+.streamlit/cache/
+.fastapi_cache/
 
-# Build artifacts
-.pytest_tmp/
-.test_artifacts/
+# --- Internal planning doc (private, do not commit) ---
+# Pin to repo root only so docs/ARCHITECTURE.md (the public, short version)
+# stays tracked.
+/architecture.md
 
-# OS Files
-.DS_Store
+# --- Assessment PDF (private to author's machine) ---
+/AI Engineer - Assessment.pdf
+
+# --- PDFs (block by default, then allow sample fixtures) ---
+*.pdf
+!data/raw/**/*.pdf
+!examples/*.pdf
+
+# --- OS junk ---
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db
 desktop.ini
 
-# Docker (if using)
+# --- Docker overrides ---
 docker-compose.override.yml
-
-# Node/Frontend (if applicable)
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# Git merge artifacts
-*.orig
-
-# Archives
-*.zip
-*.tar.gz
-*.rar
-*.7z
-
-# IDE backups
-*.backup
-.bak/
-
-# Pytest
-.test-results/
-.test_results/
-
-# Streamlit
-.streamlit/secrets.toml
-.streamlit/cache/
-
-# FastAPI
-.fastapi_cache/
-
-# Application specific
-examples/output_*.json
-examples/rules_*.yaml
-eval/results_*.json
-titandb.sqlite
-edit_events.db
-rules_*.yaml
-*.pdf
-start_docker_and_qdrant.ps1
-# LLM response cache (regenerated on demand)
-data/.llm_cache/

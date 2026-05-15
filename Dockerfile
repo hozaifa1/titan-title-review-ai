@@ -1,10 +1,10 @@
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PIP_NO_CACHE_DIR=1
-ENV HF_HOME=/app/cache/huggingface
-ENV DOCLING_CACHE_DIR=/app/cache/docling
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/app/cache/huggingface \
+    DOCLING_CACHE_DIR=/app/cache/docling
 
 WORKDIR /app
 
@@ -23,14 +23,17 @@ RUN python -m pip install --upgrade pip \
 COPY titan ./titan
 COPY baml_src ./baml_src
 COPY data ./data
-COPY main.py ./main.py
+COPY rules ./rules
+COPY main.py streamlit_app.py ./
 
-RUN mkdir -p /app/cache/huggingface /app/cache/docling \
+RUN mkdir -p /app/cache/huggingface /app/cache/docling /app/data/out /app/eval \
     && addgroup --system titan \
     && adduser --system --ingroup titan --home /app --no-create-home titan \
     && chown -R titan:titan /app
 
 USER titan
 
+EXPOSE 8501
+
 ENTRYPOINT ["python", "-m", "titan.cli"]
-CMD ["index-query", "--query", "Who is the vested owner?", "--top-k", "5", "--qdrant-url", "http://qdrant:6333"]
+CMD ["--help"]

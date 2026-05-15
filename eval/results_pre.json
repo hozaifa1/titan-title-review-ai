@@ -1,0 +1,220 @@
+{
+  "condition": "pre",
+  "rules_version": null,
+  "edit_memory_size": 0,
+  "aggregate": {
+    "field_edit_distance": 0.9081,
+    "retrieval_recall_at_5": 0.6667,
+    "faithfulness": 0.0,
+    "answer_relevancy": 0.7288,
+    "citation_accuracy": 0.0673,
+    "rule_application_rate": 0.0
+  },
+  "cases": [
+    {
+      "doc_id": "wayne_county_commitment_0",
+      "field_edit_distance": 0.8838390544640544,
+      "retrieval_recall_at_5": 1.0,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.7394135785142887,
+      "citation_accuracy": 0.1111111111111111,
+      "rule_application_rate": 0.0,
+      "per_section_edit_distance": [
+        {
+          "section": "s1_vesting_and_estate",
+          "distance": 0.8205,
+          "gold_length": 245,
+          "produced_length": 274
+        },
+        {
+          "section": "s2_legal_description",
+          "distance": 0.8214,
+          "gold_length": 179,
+          "produced_length": 157
+        },
+        {
+          "section": "s3_chain_of_title",
+          "distance": 1.0,
+          "gold_length": 220,
+          "produced_length": 413
+        },
+        {
+          "section": "s4_open_encumbrances_and_liens",
+          "distance": 0.9697,
+          "gold_length": 220,
+          "produced_length": 174
+        },
+        {
+          "section": "s5_easements_and_restrictions",
+          "distance": 0.9583,
+          "gold_length": 170,
+          "produced_length": 170
+        },
+        {
+          "section": "s6_requirements_schedule_b_i",
+          "distance": 0.7778,
+          "gold_length": 188,
+          "produced_length": 120
+        },
+        {
+          "section": "s7_exceptions_schedule_b_ii",
+          "distance": 0.76,
+          "gold_length": 160,
+          "produced_length": 116
+        },
+        {
+          "section": "s8_taxes_and_survey_matters",
+          "distance": 0.963,
+          "gold_length": 178,
+          "produced_length": 171
+        }
+      ],
+      "per_section_citation_accuracy": {
+        "s1_vesting_and_estate": 0.0,
+        "s2_legal_description": 1.0,
+        "s3_chain_of_title": 0.0,
+        "s4_open_encumbrances_and_liens": 0.0,
+        "s5_easements_and_restrictions": 0.0,
+        "s6_requirements_schedule_b_i": 0.0,
+        "s7_exceptions_schedule_b_ii": 0.0,
+        "s8_taxes_and_survey_matters": 0.0
+      },
+      "rule_verdicts": {}
+    },
+    {
+      "doc_id": "osmre_mortgage_deed_of_trust",
+      "field_edit_distance": 0.9003100090056612,
+      "retrieval_recall_at_5": 1.0,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.7088095697273691,
+      "citation_accuracy": 0.09090909090909091,
+      "rule_application_rate": 0.0,
+      "per_section_edit_distance": [
+        {
+          "section": "s1_vesting_and_estate",
+          "distance": 0.9459,
+          "gold_length": 186,
+          "produced_length": 143
+        },
+        {
+          "section": "s2_legal_description",
+          "distance": 0.8519,
+          "gold_length": 165,
+          "produced_length": 146
+        },
+        {
+          "section": "s3_chain_of_title",
+          "distance": 0.6739,
+          "gold_length": 276,
+          "produced_length": 296
+        },
+        {
+          "section": "s4_open_encumbrances_and_liens",
+          "distance": 1.0,
+          "gold_length": 222,
+          "produced_length": 671
+        },
+        {
+          "section": "s5_easements_and_restrictions",
+          "distance": 0.8333,
+          "gold_length": 170,
+          "produced_length": 159
+        },
+        {
+          "section": "s6_requirements_schedule_b_i",
+          "distance": 1.0,
+          "gold_length": 195,
+          "produced_length": 372
+        },
+        {
+          "section": "s7_exceptions_schedule_b_ii",
+          "distance": 1.0,
+          "gold_length": 163,
+          "produced_length": 189
+        },
+        {
+          "section": "s8_taxes_and_survey_matters",
+          "distance": 0.8974,
+          "gold_length": 219,
+          "produced_length": 171
+        }
+      ],
+      "per_section_citation_accuracy": {
+        "s1_vesting_and_estate": 0.0,
+        "s2_legal_description": 0.0,
+        "s3_chain_of_title": 0.0,
+        "s4_open_encumbrances_and_liens": 0.3333,
+        "s5_easements_and_restrictions": 0.0,
+        "s6_requirements_schedule_b_i": 0.0,
+        "s7_exceptions_schedule_b_ii": 0.0,
+        "s8_taxes_and_survey_matters": 0.0
+      },
+      "rule_verdicts": {}
+    },
+    {
+      "doc_id": "fromthepage_1875_handwritten_deed",
+      "field_edit_distance": 0.9401976495726496,
+      "retrieval_recall_at_5": 0.0,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.7382599908875664,
+      "citation_accuracy": 0.0,
+      "rule_application_rate": 0.0,
+      "per_section_edit_distance": [
+        {
+          "section": "s1_vesting_and_estate",
+          "distance": 0.9778,
+          "gold_length": 288,
+          "produced_length": 322
+        },
+        {
+          "section": "s2_legal_description",
+          "distance": 0.8519,
+          "gold_length": 189,
+          "produced_length": 90
+        },
+        {
+          "section": "s3_chain_of_title",
+          "distance": 0.8846,
+          "gold_length": 306,
+          "produced_length": 162
+        },
+        {
+          "section": "s4_open_encumbrances_and_liens",
+          "distance": 0.9583,
+          "gold_length": 137,
+          "produced_length": 112
+        },
+        {
+          "section": "s5_easements_and_restrictions",
+          "distance": 1.0,
+          "gold_length": 193,
+          "produced_length": 441
+        },
+        {
+          "section": "s6_requirements_schedule_b_i",
+          "distance": 1.0,
+          "gold_length": 199,
+          "produced_length": 258
+        },
+        {
+          "section": "s7_exceptions_schedule_b_ii",
+          "distance": 0.9231,
+          "gold_length": 177,
+          "produced_length": 84
+        },
+        {
+          "section": "s8_taxes_and_survey_matters",
+          "distance": 0.9259,
+          "gold_length": 164,
+          "produced_length": 171
+        }
+      ],
+      "per_section_citation_accuracy": {
+        "s1_vesting_and_estate": 0.0,
+        "s3_chain_of_title": 0.0,
+        "s8_taxes_and_survey_matters": 0.0
+      },
+      "rule_verdicts": {}
+    }
+  ]
+}

@@ -1,10 +1,42 @@
 .git
+.gitignore
+.github
 .mypy_cache
 .pytest_cache
 .ruff_cache
+.venv
+venv
 __pycache__
 *.pyc
+*.pyo
+
 .env
-qdrant_storage
+.env.local
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Vector store (provided by the qdrant service)
+qdrant_storage/
+
+# Local SQLite databases
 data/titan.db
-cache
+data/.llm_cache/
+
+# Local demo logs / scratch
+*.log
+eval_out.txt
+pytest*.txt
+
+# Cache directories
+cache/
+.cache/
+
+# Private planning doc
+architecture.md
+AI Engineer - Assessment.pdf
+
+# Tests (run on host, not in the image)
+tests/
