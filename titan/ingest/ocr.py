@@ -71,9 +71,11 @@ async def parse_document(path: str | Path) -> ParsedDoc:
         )
         base_pages = base_pages[:MAX_PAGES_PER_DOC]
 
-    # Identify which pages have sparse text and need a Docling rescue.
-    # We only call Docling if the doc started on pdfplumber — i.e. mixed
-    # quality. Pure-Docling docs already used the heavy parser.
+    # Identify which pages have sparse text and might need a Docling rescue.
+    # Critical: Docling has NO per-page API in 2026 — invoking it for ONE
+    # page costs a full-document pass (90-170s on CPU). It's only worth the
+    # cost if a significant FRACTION of pages are sparse (genuinely scanned
+    # input) — not when a 37-page text PDF has one mostly-blank divider.
     sparse_pages: list[int] = []
     if "pdfplumber" in parser_chain and "docling" not in parser_chain:
         for page in base_pages:
@@ -82,26 +84,80 @@ async def parse_document(path: str | Path) -> ParsedDoc:
 
     docling_rescued: dict[int, ParsedPage] = {}
     if sparse_pages:
-        log.info(
-            "ocr.docling_rescue_sparse_pages",
-            path=str(source_path),
-            count=len(sparse_pages),
-            pages=sparse_pages[:10],
-        )
-        rescued, rescue_warnings = await _run_docling(source_path, only_pages=sparse_pages)
-        warnings.extend(rescue_warnings)
-        for rp in rescued:
-            docling_rescued[rp.page_number] = rp
-        if docling_rescued:
-            parser_chain.append("docling")
+        sparse_ratio = len(sparse_pages) / max(len(base_pages), 1)
+        # Only pay the full-doc Docling tax if the document is mostly scanned
+        # (>=30% sparse pages) OR very small (<=3 pages where each page matters).
+        if sparse_ratio >= 0.30 or len(base_pages) <= 3:
+            log.info(
+                "ocr.docling_rescue_sparse_pages",
+                path=str(source_path),
+                count=len(sparse_pages),
+                sparse_ratio=round(sparse_ratio, 2),
+                pages=sparse_pages[:10],
+            )
+            rescued, rescue_warnings = await _run_docling(source_path, only_pages=sparse_pages)
+            warnings.extend(rescue_warnings)
+            for rp in rescued:
+                docling_rescued[rp.page_number] = rp
+            if docling_rescued:
+                parser_chain.append("docling")
+        else:
+            log.info(
+                "ocr.docling_rescue_skipped_low_sparse_ratio",
+                path=str(source_path),
+                sparse_count=len(sparse_pages),
+                total_pages=len(base_pages),
+                sparse_ratio=round(sparse_ratio, 2),
+            )
+            warnings.append(
+                f"{len(sparse_pages)} sparse-text page(s) detected out of {len(base_pages)}; "
+                "skipping Docling rescue because the document is predominantly text — "
+                "the cost (full-doc OCR pass) outweighs the gain on isolated blank pages."
+            )
 
-    pages: list[ParsedPage] = []
+    # Apply Docling rescues + decide which pages even need LLM classification.
+    candidates: list[ParsedPage] = []
     for page in base_pages:
         rescued_page = docling_rescued.get(page.page_number)
         if rescued_page is not None and len(rescued_page.markdown.strip()) > len(page.markdown.strip()):
             page = rescued_page
+        candidates.append(page)
 
-        classification = await classify_page(page.markdown, source_path, page.page_number)
+    # Skip the LLM classifier when the heuristic is already confident (clean
+    # text). This is a 10-100x speedup on multi-page commitments: we don't
+    # need a 2s LLM call to confirm what a confidence score >= 0.85 already
+    # tells us.  Only ambiguous pages get the LLM call, and even those are
+    # batched in parallel rather than awaited sequentially.
+    classifications: dict[int, PageClass] = {}
+    ambiguous: list[ParsedPage] = []
+    for page in candidates:
+        if _looks_handwritten(source_path, page.markdown):
+            classifications[page.page_number] = "handwritten"
+            continue
+        heuristic = _heuristic_classification(page.markdown)
+        if page.confidence >= 0.85 or len(page.markdown.strip()) < 40:
+            # Confident clean text OR a near-empty page — no point asking an LLM.
+            classifications[page.page_number] = heuristic
+        else:
+            ambiguous.append(page)
+
+    if ambiguous and get_settings().has_any_llm:
+        results = await asyncio.gather(
+            *[classify_page(p.markdown, source_path, p.page_number) for p in ambiguous],
+            return_exceptions=True,
+        )
+        for p, result in zip(ambiguous, results, strict=True):
+            if isinstance(result, BaseException):
+                classifications[p.page_number] = _heuristic_classification(p.markdown)
+            else:
+                classifications[p.page_number] = result
+    else:
+        for p in ambiguous:
+            classifications[p.page_number] = _heuristic_classification(p.markdown)
+
+    pages: list[ParsedPage] = []
+    for page in candidates:
+        classification = classifications.get(page.page_number, _heuristic_classification(page.markdown))
         if classification == "handwritten":
             qwen_page = await _run_qwen2_5_vl(source_path, page.page_number)
             if qwen_page is not None:

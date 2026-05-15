@@ -56,13 +56,17 @@ class Settings(BaseSettings):
     # Global concurrency cap across all providers. Prevents bursting past per-minute limits
     # when 8 ALTA sections × N documents fan out in parallel.
     llm_max_concurrency: int = Field(default=3, alias="TITAN_LLM_MAX_CONCURRENCY")
-    # Per-provider call timeout. A stalled HTTP request must surface here — without
-    # this ceiling, a Gemini SDK worker thread or a slow-streaming response can
-    # block the asyncio task forever (we hit this in production).
-    llm_per_call_timeout_seconds: float = Field(default=45.0, alias="TITAN_LLM_PER_CALL_TIMEOUT")
+    # Per-provider call timeout. Fast providers (Cerebras, SambaNova, Groq)
+    # respond in <3s under normal load. We set 15s so a stalled provider
+    # surfaces an error fast enough to fall over to the next one in the chain.
+    # A stalled HTTP request must surface here — without this ceiling, a
+    # Gemini SDK worker thread or a slow-streaming response can block the
+    # asyncio task forever (we hit this in production).
+    llm_per_call_timeout_seconds: float = Field(default=15.0, alias="TITAN_LLM_PER_CALL_TIMEOUT")
     # Total budget across the whole provider chain (all attempts × all providers).
     # If every provider hangs we surface ``LLMUnavailableError`` instead of stalling.
-    llm_total_timeout_seconds: float = Field(default=180.0, alias="TITAN_LLM_TOTAL_TIMEOUT")
+    # Six providers × two attempts × 15s ≈ 180s upper bound.
+    llm_total_timeout_seconds: float = Field(default=120.0, alias="TITAN_LLM_TOTAL_TIMEOUT")
 
     # Vector store
     qdrant_url: str | None = Field(default=None, alias="QDRANT_URL")

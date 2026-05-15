@@ -105,6 +105,21 @@ class LLMClient:
     # implicitly bound to the loop where it's first awaited; reusing one across
     # loops would deadlock indefinitely on closed loops (a real bug we hit).
     _loop_sems: dict[int, asyncio.Semaphore] = {}
+    # Providers that have failed-hard (rate-limit / auth / config) during this
+    # process lifetime. We skip them on subsequent calls so a single 429 doesn't
+    # cause every future request to waste 15s re-confirming the provider is dead.
+    # This is critical: ``asyncio.to_thread`` orphans threads on timeout (Python
+    # threads can't be cancelled), so repeatedly hitting a stalled provider
+    # drains the executor pool and stalls the whole pipeline.
+    _dead_providers: set[str] = set()
+
+    @classmethod
+    def mark_provider_dead(cls, provider: str) -> None:
+        cls._dead_providers.add(provider)
+
+    @classmethod
+    def reset_dead_providers(cls) -> None:
+        cls._dead_providers.clear()
 
     @classmethod
     def _acquire_semaphore(cls, size: int) -> asyncio.Semaphore:
@@ -200,6 +215,9 @@ class LLMClient:
             handler = dispatch.get(provider)
             if handler is None:
                 continue
+            if provider in type(self)._dead_providers:
+                # Already marked dead this session — skip without spending a request.
+                continue
             for attempt in range(1, max_attempts_per_provider + 1):
                 try:
                     # Hard per-call ceiling. Without this a stuck provider
@@ -217,7 +235,10 @@ class LLMClient:
                         attempt=attempt,
                         per_call=per_call,
                     )
-                    break  # don't retry a stalled provider; move on
+                    # Stalls leak threads on Gemini specifically; mark dead so we
+                    # don't keep draining the executor pool with orphaned work.
+                    type(self).mark_provider_dead(provider)
+                    break
                 except Exception as exc:  # pragma: no cover - exercised via integration tests
                     last_exc = exc
                     rate_limited = _is_rate_limit_error(exc)
@@ -231,10 +252,13 @@ class LLMClient:
                         error=str(exc)[:200],
                     )
                     if rate_limited:
+                        # If the wait is recoverable AND short, sit it out;
+                        # otherwise the provider is dead for this session.
                         if retry_after is not None and retry_after <= 8 and attempt < max_attempts_per_provider:
                             await asyncio.sleep(retry_after + 0.25)
                             continue
-                        break  # move to next provider
+                        type(self).mark_provider_dead(provider)
+                        break
                     if attempt < max_attempts_per_provider:
                         await asyncio.sleep(1.5 * attempt)
                         continue
@@ -266,46 +290,60 @@ class LLMClient:
         return data, result
 
     async def _call_gemini(self, prompt: str, temperature: float, response_json: bool) -> LLMResult:
+        """Direct REST call to Gemini.
+
+        Avoids the ``google.generativeai`` SDK because that SDK requires
+        ``asyncio.to_thread``, and a stalled thread cannot be cancelled by
+        ``asyncio.wait_for`` — Python threads aren't externally
+        interruptible, so timeouts leak threads and eventually exhaust the
+        executor pool, hanging the whole pipeline. Using httpx gives us
+        proper cooperative cancellation on timeout.
+        """
+
         keys = self.settings.gemini_keys
         if not keys:
             raise LLMUnavailableError("Gemini key missing")
-        import google.generativeai as genai  # type: ignore[import-untyped]
+
+        model = self.settings.gemini_model
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        generation_config: dict[str, Any] = {"temperature": temperature}
+        if response_json:
+            generation_config["response_mime_type"] = "application/json"
+
+        body = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": generation_config,
+        }
 
         last_exc: Exception | None = None
-        config: dict[str, Any] = {"temperature": temperature}
-        if response_json:
-            config["response_mime_type"] = "application/json"
+        # Slightly under per-call timeout so httpx surfaces an error before
+        # the outer ``asyncio.wait_for`` fires and orphans the request.
+        http_timeout = max(5.0, float(self.settings.llm_per_call_timeout_seconds) - 1.0)
 
-        # CRITICAL: pass an SDK-level timeout. Without ``request_options.timeout``
-        # the Gemini SDK's underlying HTTP call has no timeout and the worker
-        # thread spawned by ``asyncio.to_thread`` blocks forever — Python
-        # threads cannot be killed externally, so even the outer
-        # ``asyncio.wait_for`` returns but the thread keeps consuming
-        # resources. Set this slightly below the per-call timeout so the SDK
-        # surfaces a real exception that we can fall over.
-        sdk_timeout = max(5.0, float(self.settings.llm_per_call_timeout_seconds) - 2.0)
-        request_options = {"timeout": sdk_timeout}
-
-        for key in keys:
-            try:
-                genai.configure(api_key=key)
-                model = genai.GenerativeModel(self.settings.gemini_model)
-                response = await asyncio.to_thread(
-                    model.generate_content,
-                    prompt,
-                    generation_config=config,
-                    request_options=request_options,
-                )
-                text = _gemini_response_text(response)
-                if not text:
-                    raise RuntimeError("Gemini returned empty text")
-                return LLMResult(text=text, provider="gemini", model=self.settings.gemini_model)
-            except Exception as exc:
-                last_exc = exc
-                if not _is_rate_limit_error(exc):
-                    raise
-                log.info("llm.gemini_key_exhausted_trying_fallback", error=str(exc)[:140])
-                continue
+        async with httpx.AsyncClient(timeout=http_timeout) as client:
+            for key in keys:
+                try:
+                    resp = await client.post(
+                        url,
+                        params={"key": key},
+                        json=body,
+                    )
+                    resp.raise_for_status()
+                    payload = resp.json()
+                    candidates = payload.get("candidates") or []
+                    if not candidates:
+                        raise RuntimeError("Gemini returned no candidates")
+                    parts = (candidates[0].get("content") or {}).get("parts") or []
+                    text = "".join(part.get("text", "") for part in parts)
+                    if not text:
+                        raise RuntimeError("Gemini returned empty text")
+                    return LLMResult(text=text, provider="gemini", model=model)
+                except Exception as exc:
+                    last_exc = exc
+                    if not _is_rate_limit_error(exc):
+                        raise
+                    log.info("llm.gemini_key_exhausted_trying_fallback", error=str(exc)[:140])
+                    continue
 
         assert last_exc is not None
         raise last_exc
@@ -493,9 +531,10 @@ def get_llm_client() -> LLMClient:
 
 
 def reset_llm_client() -> None:
-    """Force the cached client to be re-instantiated (useful in tests)."""
+    """Force the cached client to be re-instantiated and clear all dead-provider state."""
     global _default_client
     _default_client = None
+    LLMClient.reset_dead_providers()
 
 
 __all__ = [
