@@ -61,6 +61,32 @@ async def parse_document(path: str | Path) -> ParsedDoc:
                 if "qwen2_5_vl" not in parser_chain:
                     parser_chain.append("qwen2_5_vl")
                 continue
+            # Handwritten page with no transcript fixture and no live VLM:
+            # do NOT silently fall through — flag the page so downstream
+            # extractors know its content may be missing/incomplete.
+            warning_msg = (
+                f"Page {page.page_number} classified as handwritten but no VLM endpoint "
+                "or transcript fixture was available; downstream extraction will rely on "
+                "Docling text only and may miss handwritten content."
+            )
+            log.warning(
+                "ocr.handwritten_page_no_vlm",
+                path=str(source_path),
+                page=page.page_number,
+            )
+            warnings.append(warning_msg)
+            updated_warnings = list(page.warnings) + [warning_msg]
+            pages.append(
+                page.model_copy(
+                    update={
+                        "classification": classification,
+                        "warnings": updated_warnings,
+                        # Reduce confidence so downstream code treats this page conservatively.
+                        "confidence": min(page.confidence, 0.4),
+                    }
+                )
+            )
+            continue
 
         if page.confidence < LOW_CONFIDENCE_THRESHOLD:
             pdf_page = await _run_pdfplumber_page(source_path, page.page_number)
@@ -76,51 +102,36 @@ async def parse_document(path: str | Path) -> ParsedDoc:
 
 
 async def classify_page(markdown: str, path: Path, page_number: int) -> PageClass:
-    """Classify page quality.
+    """Classify page quality via the LLM provider chain; falls back to heuristic.
 
-    Gemini Flash is used when `GOOGLE_API_KEY` is present; otherwise a stable
-    heuristic keeps the offline checkpoint deterministic.
+    The router tries Gemini → Groq → OpenRouter (configured order) before
+    degrading to the deterministic heuristic — keeps offline checkpoints
+    runnable while preferring real model classifications when available.
     """
 
     if _looks_handwritten(path, markdown):
         return "handwritten"
 
     settings = get_settings()
-    api_key = settings.gemini_key
-    if not api_key:
+    if not settings.has_any_llm:
         return _heuristic_classification(markdown)
 
     try:
-        label = await _classify_with_gemini(api_key, settings.gemini_model, path, page_number, markdown)
+        from titan.llm_client import get_llm_client
+
+        prompt = (
+            "Classify this OCR page as exactly one of clean_text, scanned_typed, "
+            "handwritten, mixed_low_quality. Return only the label.\n\n"
+            f"File: {path.name}, page {page_number}\n\n{markdown[:4000]}"
+        )
+        result = await get_llm_client().generate_text(prompt, temperature=0.0)
+        label = (result.text or "").strip().lower().split()[0] if result.text else ""
         if label in {"clean_text", "scanned_typed", "handwritten", "mixed_low_quality"}:
             return label  # type: ignore[return-value]
     except Exception as exc:
         log.warning("page classification fell back to heuristic", error=str(exc), page=page_number)
-        return _heuristic_classification(markdown)
 
     return _heuristic_classification(markdown)
-
-
-@retry(
-    retry=retry_if_exception_type(Exception),
-    wait=wait_exponential(multiplier=1, min=1, max=6),
-    stop=stop_after_attempt(3),
-    reraise=True,
-)
-async def _classify_with_gemini(
-    api_key: str, model_name: str, path: Path, page_number: int, markdown: str
-) -> str:
-    import google.generativeai as genai  # type: ignore[import-untyped]
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(model_name)
-    prompt = (
-        "Classify this OCR page as exactly one of clean_text, scanned_typed, "
-        "handwritten, mixed_low_quality. Return only the label.\n\n"
-        f"File: {path.name}, page {page_number}\n\n{markdown[:4000]}"
-    )
-    response = await asyncio.to_thread(model.generate_content, prompt)
-    return (response.text or "").strip().lower()
 
 
 @retry(

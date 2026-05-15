@@ -1,0 +1,55 @@
+{
+  "pre": {
+    "aggregate": {
+      "field_edit_distance": 0.8975,
+      "retrieval_recall_at_5": 0.6667,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.7481,
+      "citation_accuracy": 0.0,
+      "rule_application_rate": 0.0
+    },
+    "cases": [
+      "wayne_county_commitment_0",
+      "osmre_mortgage_deed_of_trust",
+      "fromthepage_1875_handwritten_deed"
+    ],
+    "rules_version": null,
+    "edit_memory_size": 0
+  },
+  "post": {
+    "aggregate": {
+      "field_edit_distance": 0.7396,
+      "retrieval_recall_at_5": 0.6667,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.754,
+      "citation_accuracy": 0.0,
+      "rule_application_rate": 0.5833
+    },
+    "cases": [
+      "wayne_county_commitment_0",
+      "osmre_mortgage_deed_of_trust",
+      "fromthepage_1875_handwritten_deed"
+    ],
+    "rules_version": "rules-v1",
+    "edit_memory_size": 24
+  },
+  "improvement": {
+    "field_edit_distance_delta": -0.1579,
+    "field_edit_distance_pct_reduction": 0.1759,
+    "faithfulness_delta": 0.0,
+    "answer_relevancy_delta": 0.0059,
+    "retrieval_recall_at_5_delta": 0.0,
+    "citation_accuracy_delta": 0.0,
+    "rule_application_rate_post": 0.5833
+  },
+  "output_dir": "eval"
+}
+
+| Metric | Condition A (no learning) | Condition B (with learning) | Delta |
+| --- | ---: | ---: | ---: |
+| Faithfulness (binary judge, higher = better) | 0.000 | 0.000 | +0.000 |
+| Answer relevancy (higher = better) | 0.748 | 0.754 | +0.006 |
+| Field-level edit distance (lower = better) | 0.897 | 0.740 | -0.158 (17.6% lower) |
+| Retrieval recall@5 | 0.667 | 0.667 | +0.000 |
+| Citation accuracy (higher = better) | 0.000 | 0.000 | +0.000 |
+| Rule application rate (higher = better) | 0.000 | 0.583 | +0.583 |

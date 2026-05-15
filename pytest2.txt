@@ -1,0 +1,15 @@
+...............                                                          [100%]
+============================== warnings summary ===============================
+tests/test_eval.py::test_run_eval_writes_results_files
+  F:\Projects\SpecterAIEngr\titan\llm_client.py:145: FutureWarning: 
+  
+  All support for the `google.generativeai` package has ended. It will no longer be receiving 
+  updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+  See README for more details:
+  
+  https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+  
+    import google.generativeai as genai  # type: ignore[import-untyped]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+15 passed, 1 warning in 417.98s (0:06:57)

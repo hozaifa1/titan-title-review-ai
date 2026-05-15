@@ -119,24 +119,23 @@ async def distill_rules_for_section(
 
     existing = rule_store.load(section)
     next_version = (existing.version + 1) if existing else 1
-    should_use_gemini = _has_gemini_key() if use_gemini is None else use_gemini
+    should_use_llm = get_settings().has_any_llm if use_gemini is None else use_gemini
 
     rules: list[Rule] = []
     superseded: list[SupersededRule] = []
     raw_response: str | None = None
     used_gemini = False
 
-    if should_use_gemini:
+    if should_use_llm:
         try:
-            rules, superseded, raw_response = await _call_gemini_judge(
+            rules, superseded, raw_response = await _call_llm_judge(
                 section=section,
                 events=edit_window,
                 existing_rules=existing.rules if existing else [],
-                model_name=model_name,
             )
-            used_gemini = True
+            used_gemini = True  # name kept for backwards-compat; means "LLM-driven path"
         except Exception as exc:
-            logger.warning("rule_distill.gemini_failed", section=section, error=str(exc))
+            logger.warning("rule_distill.llm_failed", section=section, error=str(exc))
 
     if not rules:
         rules = _offline_distill(edit_window)
@@ -157,34 +156,21 @@ def _has_gemini_key() -> bool:
     return get_settings().has_gemini
 
 
-@retry(
-    retry=retry_if_exception_type(Exception),
-    wait=wait_exponential(multiplier=1, min=1, max=8),
-    stop=stop_after_attempt(3),
-    reraise=True,
-)
-async def _call_gemini_judge(
+async def _call_llm_judge(
     section: str,
     events: list[EditEvent],
     existing_rules: list[Rule],
-    model_name: str,
 ) -> tuple[list[Rule], list[SupersededRule], str]:
-    import google.generativeai as genai  # type: ignore[import-untyped]
+    """Route through the unified LLM client so Groq/OpenRouter can serve when Gemini is rate-limited."""
 
-    settings = get_settings()
-    genai.configure(api_key=settings.gemini_key)
-    model = genai.GenerativeModel(model_name)
+    from titan.llm_client import get_llm_client
+
     prompt = _judge_prompt(section, events, existing_rules)
-    response = await asyncio.to_thread(
-        model.generate_content,
-        prompt,
-        generation_config={"response_mime_type": "application/json", "temperature": 0.1},
-    )
-    raw_text = _response_text(response)
-    parsed = _parse_judge_response(raw_text)
+    parsed, result = await get_llm_client().generate_json(prompt, temperature=0.1)
+    logger.info("rule_distill.llm_provider_used", section=section, provider=result.provider, model=result.model)
     rules = _coerce_rules(parsed.get("rules") or [])
     superseded = _coerce_superseded(parsed.get("superseded") or [])
-    return rules, superseded, raw_text
+    return rules, superseded, result.text
 
 
 def _judge_prompt(section: str, events: list[EditEvent], existing_rules: list[Rule]) -> str:

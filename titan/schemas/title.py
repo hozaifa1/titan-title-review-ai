@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Generic, Literal, Optional, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 T = TypeVar("T")
 
@@ -245,6 +245,42 @@ class TitleReviewSection(BaseModel):
         description="Information missing from source docs that a reviewer should obtain",
     )
     flags: list[Literal["red", "yellow", "green"]] = Field(default_factory=list)
+
+    @field_validator("flags", mode="before")
+    @classmethod
+    def _coerce_flag_list(cls, value: object) -> object:
+        """Accept ``"green"`` as well as ``["green"]`` — Llama collapses single-item lists."""
+
+        if isinstance(value, str):
+            return [value]
+        return value
+
+    @field_validator("summary", "bullet_findings", mode="before")
+    @classmethod
+    def _coerce_cited_sentences(cls, value: object) -> object:
+        """Accept loose LLM outputs and normalize them to CitedSentence shape.
+
+        Llama 3.3 and other models frequently emit a bullet finding as a bare
+        string ("Defects, liens, …") or a partial dict missing ``citations``.
+        Reject-on-mismatch loses the entire section to the offline fallback —
+        we'd rather salvage the model's work and let downstream re-anchor the
+        citations from real retrieved chunks.
+        """
+
+        if not isinstance(value, list):
+            return value
+        normalized: list[object] = []
+        for item in value:
+            if isinstance(item, str):
+                normalized.append({"text": item, "citations": [], "confidence": "medium"})
+                continue
+            if isinstance(item, dict):
+                item.setdefault("citations", [])
+                item.setdefault("confidence", "medium")
+                if not isinstance(item["citations"], list):
+                    item["citations"] = []
+            normalized.append(item)
+        return normalized
 
 
 class TitleReviewSummary(BaseModel):

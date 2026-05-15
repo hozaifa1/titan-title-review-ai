@@ -40,6 +40,10 @@ class ConfigurationError(TitanError):
     """Raised when required configuration (e.g. an API key) is missing."""
 
 
+class LLMUnavailableError(TitanError):
+    """Raised when every configured LLM provider failed (rate-limit, network, etc.)."""
+
+
 __all__ = [
     "TitanError",
     "OCRFailedError",
@@ -49,4 +53,5 @@ __all__ = [
     "GenerationError",
     "RuleDistillationError",
     "ConfigurationError",
+    "LLMUnavailableError",
 ]

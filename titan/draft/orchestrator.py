@@ -242,12 +242,6 @@ async def generate_title_review_summary(
 
 
 @_observe(name="titan.draft.generate_section")
-@retry(
-    retry=retry_if_exception_type(Exception),
-    wait=wait_exponential(multiplier=1, min=1, max=8),
-    stop=stop_after_attempt(3),
-    reraise=True,
-)
 async def _generate_section_with_gemini(
     model_name: str,
     spec: SectionSpec,
@@ -257,37 +251,29 @@ async def _generate_section_with_gemini(
     rule_set: RuleSet | None = None,
     few_shot: list[EditEvent] | None = None,
 ) -> TitleReviewSection:
-    """Call Gemini for one section.
+    """Call the configured LLM provider chain for one section.
 
-    Gemini exposes response citation metadata on generated candidates. The
-    prompt also uses chunk-ID citation tags, then this module post-processes the
-    returned section so every citation is tied to a local chunk provenance span.
+    Walks Gemini → Groq → OpenRouter (per ``Settings.provider_chain``). The
+    returned JSON is parsed and the section's citations are re-anchored to
+    real retrieved chunks downstream in :func:`_normalize_section`.
+
+    The legacy function name is preserved so the orchestrator's call sites
+    don't need to change; the function body now uses :class:`LLMClient`.
     """
 
-    import google.generativeai as genai  # type: ignore[import-untyped]
+    from titan.llm_client import get_llm_client
 
-    settings = get_settings()
-    genai.configure(api_key=settings.gemini_key)
-    model = genai.GenerativeModel(model_name)
+    del model_name  # provider chain selects its own model
+
     prompt = _section_prompt(spec, title_document, hits, structured, rule_set, few_shot or [])
-    response = await asyncio.to_thread(
-        model.generate_content,
-        prompt,
-        generation_config={"response_mime_type": "application/json", "temperature": 0.1},
+    data, result = await get_llm_client().generate_json(prompt, temperature=0.1)
+    log.info(
+        "draft.section_provider_used",
+        section=spec.field_name,
+        provider=result.provider,
+        model=result.model,
     )
-    raw_text = _response_text(response)
-    data = _load_json_object(raw_text)
     section = TitleReviewSection.model_validate(data)
-    citation_metadata = _extract_citation_metadata(response)
-    if citation_metadata:
-        section = section.model_copy(
-            update={
-                "gaps": [
-                    *section.gaps,
-                    f"Gemini citationMetadata present for trace inspection: {citation_metadata[:300]}",
-                ]
-            }
-        )
     return section
 
 
@@ -824,7 +810,8 @@ def _nested_value(value: Any) -> Any:
 
 
 def _has_gemini_key() -> bool:
-    return get_settings().has_gemini
+    """Legacy name; now means "any LLM provider is configured"."""
+    return get_settings().has_any_llm
 
 
 def _response_text(response: Any) -> str:

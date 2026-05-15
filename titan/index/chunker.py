@@ -7,13 +7,6 @@ import hashlib
 import re
 from dataclasses import dataclass
 
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
-
 from titan.config import get_settings
 from titan.index.models import Chunk
 from titan.schemas import Provenance, TitleDocument
@@ -107,38 +100,31 @@ def _token_windows(text: str, chunk_tokens: int, overlap_tokens: int) -> list[tu
 
 
 async def _context_sentence(full_doc: str, chunk: str, title_document: TitleDocument, use_gemini: bool) -> str:
+    """Generate a one-sentence chunk context via the LLM client, with heuristic fallback.
+
+    ``use_gemini`` is retained for backwards compatibility but now toggles the
+    full multi-provider chain (Gemini → Groq → OpenRouter). If every provider
+    fails or no key is configured, we degrade to the heuristic context line.
+    """
+
     settings = get_settings()
-    api_key = settings.gemini_key
-    if use_gemini and api_key:
+    if use_gemini and settings.has_any_llm:
         try:
-            text = await _gemini_context_sentence(api_key, settings.gemini_model, full_doc, chunk)
-            if text:
-                return _single_sentence(text)
+            from titan.llm_client import get_llm_client
+
+            prompt = (
+                "You are creating contextual retrieval chunks for a title-review system. "
+                "Given the full document and one chunk, write one concise sentence that "
+                "situates the chunk by document section and subject. Return only the sentence.\n\n"
+                f"Full document:\n{full_doc[:120000]}\n\nChunk:\n{chunk[:8000]}"
+            )
+            result = await get_llm_client().generate_text(prompt, temperature=0.0)
+            if result.text:
+                return _single_sentence(result.text)
         except Exception as exc:
             log.warning("contextual chunk generation fell back to heuristic", error=str(exc))
 
     return _heuristic_context(chunk, title_document)
-
-
-@retry(
-    retry=retry_if_exception_type(Exception),
-    wait=wait_exponential(multiplier=1, min=1, max=6),
-    stop=stop_after_attempt(3),
-    reraise=True,
-)
-async def _gemini_context_sentence(api_key: str, model_name: str, full_doc: str, chunk: str) -> str:
-    import google.generativeai as genai  # type: ignore[import-untyped]
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(model_name)
-    prompt = (
-        "You are creating contextual retrieval chunks for a title-review system. "
-        "Given the full document and one chunk, write one concise sentence that "
-        "situates the chunk by document section and subject. Return only the sentence.\n\n"
-        f"Full document:\n{full_doc[:120000]}\n\nChunk:\n{chunk[:8000]}"
-    )
-    response = await asyncio.to_thread(model.generate_content, prompt)
-    return (response.text or "").strip()
 
 
 def _heuristic_context(chunk: str, title_document: TitleDocument) -> str:
