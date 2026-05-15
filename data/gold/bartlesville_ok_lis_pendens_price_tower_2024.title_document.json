@@ -1,0 +1,29 @@
+{
+  "doc_id": "bartlesville_ok_lis_pendens_price_tower_2024",
+  "doc_type": "other",
+  "file_path": "data\\raw\\judgment\\bartlesville_ok_lis_pendens_price_tower_2024.pdf",
+  "page_count": 2,
+  "parsed_at": "2026-05-15",
+  "effective_date": null,
+  "proposed_insured": null,
+  "estate_or_interest": null,
+  "vesting": [],
+  "policy_amount": null,
+  "legal_description": null,
+  "parties": [],
+  "chain_of_title": [],
+  "open_liens": [],
+  "released_liens": [],
+  "easements": [],
+  "restrictions": [],
+  "taxes": [],
+  "schedule_b_requirements": [],
+  "schedule_b_exceptions": [],
+  "survey_matters": [],
+  "has_recording_stamp": false,
+  "notarized": null,
+  "extraction_warnings": [
+    "LLM-extracted via cerebras:qwen-3-235b-a22b-instruct-2507",
+    "Gold fixture merged with heuristic extraction for missing fields."
+  ]
+}

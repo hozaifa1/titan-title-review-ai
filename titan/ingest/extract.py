@@ -465,31 +465,38 @@ def _extract_proposed_insured(markdown: str, doc_id: str) -> FieldWithProvenance
 def _extract_estate_or_interest(
     markdown: str, doc_id: str
 ) -> FieldWithProvenance[Literal["fee_simple", "leasehold", "easement", "life_estate", "other"]] | None:
-    """Map free-text estate description back into the schema literal.
+    """Resolve the Schedule A "estate or interest in the Land" value.
 
-    Handles:
-    - 'estate or interest ... is Fee Simple'  (traditional ALTA)
-    - 'Fee Simple interest' or standalone 'Fee Simple' near interest keywords
-    - ALTA 2021 format variations
+    Anchored tightly: must appear adjacent to the ALTA labels ("estate or
+    interest", "Estate to be insured") rather than anywhere in the document.
+    The previous loose regex picked up "Easement" from Schedule B-II exception
+    text — a known failure mode on commitments that list many easements as
+    exceptions. We bias toward "Fee Simple" because that's by far the most
+    common ALTA Schedule A value and avoid letting later mentions overwrite
+    an earlier, label-proximate match.
     """
 
-    # Primary: traditional "estate or interest ... Fee Simple" phrase
+    # Primary: traditional ALTA Schedule A phrasing.
+    # Tight window (60 chars) keeps us inside the actual Schedule A label.
     match = re.search(
-        r"estate\s+or\s+interest[^.]{0,200}?(Fee\s+Simple|Leasehold|Easement|Life\s+Estate)",
+        r"(?:Estate\s+or\s+Interest\s+(?:in\s+the\s+Land\s+)?(?:described\s+(?:in\s+)?(?:this\s+)?(?:Commitment\s+)?is|to\s+be\s+insured\s+(?:is|:))"
+        r"|Title\s+(?:to\s+be\s+insured\s+)?is\s+vested\s+in\s+[^.]{0,80}?\s+as)"
+        r"[^.]{0,60}?(Fee\s+Simple|Leasehold|Easement|Life\s+Estate)",
         markdown,
         re.IGNORECASE,
     )
-    # Fallback: 'Fee Simple interest' or 'interest is Fee Simple' etc.
+    # Schedule-A line-item ("2. The estate or interest in the Land is: Fee Simple").
     if not match:
         match = re.search(
-            r"(Fee\s+Simple|Leasehold|Easement|Life\s+Estate)\s+(?:interest|estate)",
+            r"(?:^|\n)\s*\d+\.\s*(?:The\s+)?(?:estate\s+or\s+interest|Type\s+of\s+(?:Estate|Interest))"
+            r"[^.\n]{0,120}?(Fee\s+Simple|Leasehold|Easement|Life\s+Estate)",
             markdown,
-            re.IGNORECASE,
+            re.IGNORECASE | re.MULTILINE,
         )
-    # Fallback: near 'interest' or 'estate' context within 100 chars
+    # Direct labelled value ("Fee Simple interest" / "Leasehold estate").
     if not match:
         match = re.search(
-            r"(?:interest|estate|title)\s+(?:is|in|to|:)\s{0,10}(Fee\s+Simple|Leasehold|Easement|Life\s+Estate)",
+            r"(Fee\s+Simple|Leasehold|Life\s+Estate)\s+(?:interest|estate)\b",
             markdown,
             re.IGNORECASE,
         )
@@ -899,10 +906,16 @@ _CHAIN_INSTRUMENT_PATTERNS: tuple[tuple[ChainInstrumentType, str], ...] = (
     ("court_order", r"\bcourt\s+order|judgment\s+of\s+(?:foreclosure|partition)\b"),
 )
 
-# Recorded-instrument reference: "Deed Book 1234, Page 567", "Instrument No. 2019-12345"
+# Recorded-instrument reference: "Deed Book 1234, Page 567", "Book 143 of Plats, Page 39",
+# "Instrument No. 2019-12345", "Document No. 20170103-0000123". We tolerate descriptor
+# words between Book and Page ("Book 143 of Plats, Page 39" or "Book 1234 of Records,
+# at Page 567") and a variety of separators because real-world docs use them all.
 _RECORDING_REF_RE = re.compile(
-    r"(?:Deed\s+Book|Book|Vol(?:ume)?|Liber)\s+(?P<book>[A-Z0-9\-]+)[,\s]+(?:Page|Pg\.?|Folio)\s+(?P<page>[A-Z0-9\-]+)"
-    r"|(?:Instrument|Document|Doc\.?|Recording)\s+(?:No\.?|Number|#)\s*(?P<instr>[A-Z0-9\-/]+)",
+    r"(?:Deed\s+Book|Book|Vol(?:ume)?|Liber)\s+(?P<book>[A-Z0-9\-]+)"
+    r"(?:\s+of\s+[A-Z][A-Za-z ]{2,40})?"  # optional "of Plats" / "of Official Records"
+    r"\s*[,;]?\s*(?:at\s+)?(?:Page|Pg\.?|Folio)\s+(?P<page>[A-Z0-9\-]+)"
+    r"|(?:Instrument|Document|Doc\.?|Recording|File|Reception)\s+(?:No\.?|Number|#)\s*(?P<instr>[A-Z0-9\-/]+)"
+    r"|(?P<altinstr>\d{8,}-\d{4,})",  # bare YYYYMMDD-NNNN format common in recorder IDs
     re.IGNORECASE,
 )
 

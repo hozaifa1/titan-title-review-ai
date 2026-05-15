@@ -1,0 +1,232 @@
+{
+  "doc_id": "fidelity_nv_harrahs_lasvegas_commitment_2017",
+  "doc_type": "title_commitment",
+  "file_path": "data\\raw\\commitment\\fidelity_nv_harrahs_lasvegas_commitment_2017.pdf",
+  "page_count": 37,
+  "parsed_at": "2026-05-15",
+  "effective_date": {
+    "value": "2017-11-13",
+    "confidence": 0.9,
+    "source": {
+      "doc_id": "fidelity_nv_harrahs_lasvegas_commitment_2017",
+      "page": 3,
+      "char_span": [
+        2481,
+        2514
+      ],
+      "snippet": "Effective Date: November 13, 2017"
+    }
+  },
+  "proposed_insured": {
+    "value": "NEW ENTITY NAME TO BE DETERMINED",
+    "confidence": 0.9,
+    "source": {
+      "doc_id": "fidelity_nv_harrahs_lasvegas_commitment_2017",
+      "page": 3,
+      "char_span": [
+        2731,
+        2764
+      ],
+      "snippet": "Proposed Insured: NEW ENTITY NAME TO BE DETERMINED"
+    }
+  },
+  "estate_or_interest": null,
+  "vesting": [
+    {
+      "name": "HEREIN BELOW IS SITUATED IN THE",
+      "role": "grantee",
+      "is_entity": false,
+      "capacity": null
+    },
+    {
+      "name": "Grant",
+      "role": "grantee",
+      "is_entity": false,
+      "capacity": null
+    },
+    {
+      "name": "Declaration",
+      "role": "grantee",
+      "is_entity": false,
+      "capacity": null
+    },
+    {
+      "name": "This Privacy Notice",
+      "role": "grantee",
+      "is_entity": false,
+      "capacity": null
+    },
+    {
+      "name": "FNF is entirely up to you",
+      "role": "grantee",
+      "is_entity": false,
+      "capacity": null
+    },
+    {
+      "name": "FNF",
+      "role": "grantee",
+      "is_entity": false,
+      "capacity": null
+    },
+    {
+      "name": "Management prior to approval",
+      "role": "grantee",
+      "is_entity": false,
+      "capacity": null
+    },
+    {
+      "name": "Date",
+      "role": "grantee",
+      "is_entity": false,
+      "capacity": null
+    }
+  ],
+  "policy_amount": {
+    "value": "30000000.00",
+    "confidence": 0.9,
+    "source": {
+      "doc_id": "fidelity_nv_harrahs_lasvegas_commitment_2017",
+      "page": 3,
+      "char_span": [
+        2839,
+        2852
+      ],
+      "snippet": "Liability: $30,000,000.00"
+    }
+  },
+  "legal_description": {
+    "description_type": "metes_and_bounds",
+    "text": "THE LAND REFERRED TO HEREIN BELOW IS SITUATED IN THE COUNTY OF CLARK, STATE OF NEVADA, AND IS DESCRIBED AS FOLLOWS: Parcel One (1): Lot One (1) of that certain Final Map entitled \"Final Map of Harrah's, a Commercial Subdivision\", recorded in Book 143 of Plats, Page 39, Official Records of Clark County, Nevada.",
+    "plat_book": null,
+    "plat_page": null,
+    "lot": "One",
+    "block": null,
+    "subdivision": "Harrah's, a Commercial Subdivision",
+    "parcel_id_apn": "162-16-312-002",
+    "acreage": null
+  },
+  "parties": [
+    {
+      "name": "Harrah's Las Vegas, LLC",
+      "role": "owner",
+      "is_entity": true,
+      "capacity": null
+    },
+    {
+      "name": "Citicorp North America, Inc.",
+      "role": "lender",
+      "is_entity": true,
+      "capacity": "as collateral agent for the Secured Parties"
+    },
+    {
+      "name": "U.S. Bank National Association",
+      "role": "lender",
+      "is_entity": true,
+      "capacity": "as collateral agent for the Secured Parties"
+    }
+  ],
+  "chain_of_title": [],
+  "open_liens": [
+    {
+      "lien_type": "deed_of_trust",
+      "creditor": "Unknown creditor (per reference)",
+      "debtor": "Unknown debtor (per reference)",
+      "original_amount": "1150000000.00",
+      "current_balance": null,
+      "recorded_date": null,
+      "book": null,
+      "page": null,
+      "instrument_number": null,
+      "status": "open",
+      "release_reference": null,
+      "source": {
+        "doc_id": "fidelity_nv_harrahs_lasvegas_commitment_2017",
+        "page": 1,
+        "char_span": [
+          16919,
+          16935
+        ],
+        "snippet": " and Re-Recording Date: April 28, 2014\nand Re-Recording No: 20140428-0000814, of Official Records\nB. A deed of trust to secure an indebt"
+      }
+    }
+  ],
+  "released_liens": [],
+  "easements": [],
+  "restrictions": [],
+  "taxes": [],
+  "schedule_b_requirements": [
+    {
+      "requirement_id": "B-I-1",
+      "text": "Instrument creating the estate or interest to be insured must be executed and filed for record, to wit: Grant, Bargain, Sale Deed",
+      "category": "execution_recordation",
+      "addressed_to": "other",
+      "source": {
+        "doc_id": "fidelity_nv_harrahs_lasvegas_commitment_2017",
+        "page": 8,
+        "char_span": [
+          15519,
+          22030
+        ],
+        "snippet": "Instrument creating the estate or interest to be insured must be executed and filed for record, to wit: Grant, Bargain, Sale Deed"
+      }
+    },
+    {
+      "requirement_id": "B-I-2",
+      "text": "Pay the full consideration to, or for the account of, the grantors or mortgagors",
+      "category": "payment",
+      "addressed_to": "other",
+      "source": {
+        "doc_id": "fidelity_nv_harrahs_lasvegas_commitment_2017",
+        "page": 8,
+        "char_span": [
+          15519,
+          22030
+        ],
+        "snippet": "Pay the full consideration to, or for the account of, the grantors or mortgagors"
+      }
+    }
+  ],
+  "schedule_b_exceptions": [
+    {
+      "exception_id": "B-II-1",
+      "text": "Taxes or assessments that are not shown as existing liens by the records of any taxing authority that levies taxes or assessments on real property or by the Public Records",
+      "category": "tax",
+      "is_standard": true,
+      "can_be_removed": null,
+      "removal_action": null,
+      "source": {
+        "doc_id": "fidelity_nv_harrahs_lasvegas_commitment_2017",
+        "page": 11,
+        "char_span": [
+          155,
+          300
+        ],
+        "snippet": "Taxes or assessments that are not shown as existing liens by the records of any taxing authority that levies taxes or assessments on real property or by the Public Records"
+      }
+    },
+    {
+      "exception_id": "B-II-2",
+      "text": "Any facts, rights, interests, or claims that are not shown by the Public Records but that could be ascertained by an inspection of the Land or that may be asserted by persons in possession of the Land",
+      "category": "standard",
+      "is_standard": true,
+      "can_be_removed": null,
+      "removal_action": null,
+      "source": {
+        "doc_id": "fidelity_nv_harrahs_lasvegas_commitment_2017",
+        "page": 11,
+        "char_span": [
+          305,
+          450
+        ],
+        "snippet": "Any facts, rights, interests, or claims that are not shown by the Public Records but that could be ascertained by an inspection of the Land or that may be asserted by persons in possession of the Land"
+      }
+    }
+  ],
+  "survey_matters": [],
+  "has_recording_stamp": false,
+  "notarized": null,
+  "extraction_warnings": [
+    "LLM-extracted via sambanova:Meta-Llama-3.3-70B-Instruct",
+    "Gold fixture merged with heuristic extraction for missing fields."
+  ]
+}

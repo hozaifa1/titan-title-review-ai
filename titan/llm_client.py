@@ -48,6 +48,17 @@ def _is_rate_limit_error(exc: BaseException) -> bool:
     return any(pattern in text for pattern in _RATE_LIMIT_PATTERNS)
 
 
+def _semaphore_loop_alive(sem: asyncio.Semaphore) -> bool:
+    """Best-effort check that the semaphore's bound loop is still open."""
+    loop = getattr(sem, "_loop", None)
+    if loop is None:  # not yet bound; safe to keep
+        return True
+    try:
+        return not loop.is_closed()
+    except Exception:
+        return False
+
+
 def _retry_after_seconds(exc: BaseException) -> float | None:
     """Extract a Retry-After value (seconds) from an httpx error if present.
 
@@ -83,23 +94,47 @@ class LLMClient:
     Use ``generate_text`` for free-form text or ``generate_json`` when you need
     a parsed dict. Both walk the provider chain (Gemini → Groq → OpenRouter)
     and only raise ``LLMUnavailableError`` if every configured provider fails.
+
+    Concurrency budgets and per-call timeouts are enforced strictly. Every
+    provider call is wrapped in ``asyncio.wait_for(per_call_timeout)`` and the
+    total call (chain walk) is wrapped in ``asyncio.wait_for(total_timeout)``
+    so a stuck provider can't hang the pipeline forever.
     """
 
-    # Class-level semaphore so concurrent callers share one budget across the
-    # whole process. Lazily created on first use to honour the configured cap.
-    _global_sem: asyncio.Semaphore | None = None
-    _global_sem_size: int = 0
+    # Per-event-loop semaphore cache. Keyed by id(loop) because a Semaphore is
+    # implicitly bound to the loop where it's first awaited; reusing one across
+    # loops would deadlock indefinitely on closed loops (a real bug we hit).
+    _loop_sems: dict[int, asyncio.Semaphore] = {}
 
     @classmethod
     def _acquire_semaphore(cls, size: int) -> asyncio.Semaphore:
-        if cls._global_sem is None or cls._global_sem_size != size:
-            cls._global_sem = asyncio.Semaphore(size)
-            cls._global_sem_size = size
-        return cls._global_sem
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No loop yet — create a fresh semaphore that will be bound on
+            # first await; do NOT cache it because we can't key it.
+            return asyncio.Semaphore(size)
+        cached = cls._loop_sems.get(id(loop))
+        # Drop entries whose loop has been closed so we don't leak.
+        if cached is None or loop.is_closed():
+            cached = asyncio.Semaphore(size)
+            cls._loop_sems[id(loop)] = cached
+            # Best-effort cleanup of closed loops
+            cls._loop_sems = {
+                key: sem
+                for key, sem in cls._loop_sems.items()
+                if key == id(loop) or _semaphore_loop_alive(sem)
+            }
+        return cached
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
+        self._sem: asyncio.Semaphore | None = None
+
+    def _ensure_sem(self) -> asyncio.Semaphore:
+        # Re-resolve every call so a fresh asyncio loop gets its own semaphore.
         self._sem = self._acquire_semaphore(self.settings.llm_max_concurrency)
+        return self._sem
 
     @property
     def has_any(self) -> bool:
@@ -115,9 +150,11 @@ class LLMClient:
     ) -> LLMResult:
         """Return raw text from the first provider that responds successfully.
 
-        Calls are gated by ``_global_sem`` so concurrent batch operations
-        (8-section drafts × N docs) don't burst past per-minute caps. On
-        ``429`` we honour the provider's ``Retry-After`` header where
+        Concurrency is gated by ``_loop_sems`` so batch operations
+        (8-section drafts × N docs) don't burst past per-minute caps. The
+        total walk is wrapped in an ``asyncio.wait_for`` budget — if every
+        provider stalls we surface ``LLMUnavailableError`` rather than hang.
+        On ``429`` we honour the provider's ``Retry-After`` header where
         possible — usually the difference between recoverable and dead.
         """
 
@@ -125,10 +162,21 @@ class LLMClient:
         if not providers:
             raise LLMUnavailableError("No LLM provider configured")
 
-        async with self._sem:
-            return await self._generate_text_inner(
-                prompt, temperature, response_json, max_attempts_per_provider, providers
-            )
+        sem = self._ensure_sem()
+        total_budget = self.settings.llm_total_timeout_seconds
+
+        async def _gated() -> LLMResult:
+            async with sem:
+                return await self._generate_text_inner(
+                    prompt, temperature, response_json, max_attempts_per_provider, providers
+                )
+
+        try:
+            return await asyncio.wait_for(_gated(), timeout=total_budget)
+        except asyncio.TimeoutError as exc:
+            raise LLMUnavailableError(
+                f"LLM call exceeded total budget {total_budget}s across providers {providers}"
+            ) from exc
 
     async def _generate_text_inner(
         self,
@@ -139,21 +187,37 @@ class LLMClient:
         providers: list[str],
     ) -> LLMResult:
         last_exc: Exception | None = None
+        per_call = self.settings.llm_per_call_timeout_seconds
+        dispatch: dict[str, Any] = {
+            "gemini": self._call_gemini,
+            "groq": self._call_groq,
+            "cerebras": self._call_cerebras,
+            "sambanova": self._call_sambanova,
+            "github": self._call_github_models,
+            "openrouter": self._call_openrouter,
+        }
         for provider in providers:
+            handler = dispatch.get(provider)
+            if handler is None:
+                continue
             for attempt in range(1, max_attempts_per_provider + 1):
                 try:
-                    if provider == "gemini":
-                        return await self._call_gemini(prompt, temperature, response_json)
-                    if provider == "groq":
-                        return await self._call_groq(prompt, temperature, response_json)
-                    if provider == "cerebras":
-                        return await self._call_cerebras(prompt, temperature, response_json)
-                    if provider == "sambanova":
-                        return await self._call_sambanova(prompt, temperature, response_json)
-                    if provider == "github":
-                        return await self._call_github_models(prompt, temperature, response_json)
-                    if provider == "openrouter":
-                        return await self._call_openrouter(prompt, temperature, response_json)
+                    # Hard per-call ceiling. Without this a stuck provider
+                    # (Gemini SDK worker thread, slow streaming response, etc.)
+                    # blocks the pipeline forever — the original stall bug.
+                    return await asyncio.wait_for(
+                        handler(prompt, temperature, response_json),
+                        timeout=per_call,
+                    )
+                except asyncio.TimeoutError:
+                    last_exc = TimeoutError(f"{provider} exceeded {per_call}s per-call timeout")
+                    log.warning(
+                        "llm.provider_timeout",
+                        provider=provider,
+                        attempt=attempt,
+                        per_call=per_call,
+                    )
+                    break  # don't retry a stalled provider; move on
                 except Exception as exc:  # pragma: no cover - exercised via integration tests
                     last_exc = exc
                     rate_limited = _is_rate_limit_error(exc)
@@ -167,8 +231,6 @@ class LLMClient:
                         error=str(exc)[:200],
                     )
                     if rate_limited:
-                        # If the server told us when to retry AND it's within a
-                        # sane budget, wait it out instead of failing the chain.
                         if retry_after is not None and retry_after <= 8 and attempt < max_attempts_per_provider:
                             await asyncio.sleep(retry_after + 0.25)
                             continue
@@ -214,12 +276,25 @@ class LLMClient:
         if response_json:
             config["response_mime_type"] = "application/json"
 
+        # CRITICAL: pass an SDK-level timeout. Without ``request_options.timeout``
+        # the Gemini SDK's underlying HTTP call has no timeout and the worker
+        # thread spawned by ``asyncio.to_thread`` blocks forever — Python
+        # threads cannot be killed externally, so even the outer
+        # ``asyncio.wait_for`` returns but the thread keeps consuming
+        # resources. Set this slightly below the per-call timeout so the SDK
+        # surfaces a real exception that we can fall over.
+        sdk_timeout = max(5.0, float(self.settings.llm_per_call_timeout_seconds) - 2.0)
+        request_options = {"timeout": sdk_timeout}
+
         for key in keys:
             try:
                 genai.configure(api_key=key)
                 model = genai.GenerativeModel(self.settings.gemini_model)
                 response = await asyncio.to_thread(
-                    model.generate_content, prompt, generation_config=config
+                    model.generate_content,
+                    prompt,
+                    generation_config=config,
+                    request_options=request_options,
                 )
                 text = _gemini_response_text(response)
                 if not text:

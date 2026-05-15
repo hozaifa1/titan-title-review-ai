@@ -1,10 +1,18 @@
 """Document parsing router for title-source documents.
 
-The router tries Docling first, replaces low-confidence pages with pdfplumber
-text extraction, and uses the Qwen2.5-VL hook for handwritten pages. The VLM
-hook is intentionally provider-light: in offline demo mode it can consume a
-checked-in human transcript fixture; in production it can be backed by an
-endpoint without changing the public `parse_document` contract.
+Routing strategy (changed 2026-05-15 — performance fix):
+  1. **pdfplumber first.** Modern title docs are 90%+ text-layer PDFs;
+     pdfplumber returns near-identical text in ~1s vs Docling's 90-170s on
+     CPU. For text PDFs, Docling gains us nothing meaningful.
+  2. **Docling fallback for sparse pages.** When a pdfplumber page comes
+     back with very few characters per square inch (the image-only-scan
+     signature), invoke Docling for THAT page only — preserving OCR quality
+     without paying Docling's tax on every page.
+  3. **Qwen2.5-VL hook for handwritten pages.** Detected by the page
+     classifier; offline demo mode can consume a checked-in transcript
+     fixture; production wires a hosted endpoint behind the same hook.
+
+The public contract — ``parse_document(path) -> ParsedDoc`` — is unchanged.
 """
 
 from __future__ import annotations
@@ -13,46 +21,86 @@ import asyncio
 import re
 from pathlib import Path
 
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
-
 from titan.config import get_settings
 from titan.ingest.models import PageClass, ParsedDoc, ParsedPage, ParserName
 from titan.telemetry import get_logger
 
 LOW_CONFIDENCE_THRESHOLD = 0.8
 MAX_PAGES_PER_DOC = 500  # bound memory + Gemini cost on adversarial inputs
+SPARSE_PAGE_CHAR_THRESHOLD = 60  # below this we suspect a scanned/image-only page
 log = get_logger(__name__)
 
 
 async def parse_document(path: str | Path) -> ParsedDoc:
-    """Parse a PDF/image into per-page markdown with fallback routing."""
+    """Parse a PDF/image into per-page markdown with smart routing.
+
+    Strategy: pdfplumber first (fast); Docling only for pages whose text
+    layer is sparse (likely scanned images). Image-only PDFs without any
+    text layer trigger a whole-document Docling pass.
+    """
 
     source_path = Path(path)
-    docling_pages, warnings = await _run_docling(source_path)
-    if not docling_pages:
-        docling_pages, pdf_warnings = await _run_pdfplumber(source_path)
-        warnings.extend(pdf_warnings)
+    pdf_pages, warnings = await _run_pdfplumber(source_path)
 
-    if len(docling_pages) > MAX_PAGES_PER_DOC:
+    # If pdfplumber returned absolutely nothing, the PDF has no text layer
+    # at all (pure image scan) — fall through to Docling for the whole doc.
+    total_chars = sum(len(p.markdown) for p in pdf_pages)
+    if not pdf_pages or total_chars < SPARSE_PAGE_CHAR_THRESHOLD:
+        log.info(
+            "ocr.pdfplumber_returned_no_text_using_docling",
+            path=str(source_path),
+            total_chars=total_chars,
+        )
+        docling_pages, docling_warnings = await _run_docling(source_path)
+        warnings.extend(docling_warnings)
+        base_pages = docling_pages or pdf_pages
+        parser_chain: list[ParserName] = ["docling"] if docling_pages else ["pdfplumber"]
+    else:
+        base_pages = pdf_pages
+        parser_chain = ["pdfplumber"]
+
+    if len(base_pages) > MAX_PAGES_PER_DOC:
         log.warning(
             "ocr.page_cap_applied",
             path=str(source_path),
-            requested=len(docling_pages),
+            requested=len(base_pages),
             cap=MAX_PAGES_PER_DOC,
         )
         warnings.append(
-            f"Document had {len(docling_pages)} pages; truncated to {MAX_PAGES_PER_DOC}."
+            f"Document had {len(base_pages)} pages; truncated to {MAX_PAGES_PER_DOC}."
         )
-        docling_pages = docling_pages[:MAX_PAGES_PER_DOC]
+        base_pages = base_pages[:MAX_PAGES_PER_DOC]
+
+    # Identify which pages have sparse text and need a Docling rescue.
+    # We only call Docling if the doc started on pdfplumber — i.e. mixed
+    # quality. Pure-Docling docs already used the heavy parser.
+    sparse_pages: list[int] = []
+    if "pdfplumber" in parser_chain and "docling" not in parser_chain:
+        for page in base_pages:
+            if len(page.markdown.strip()) < SPARSE_PAGE_CHAR_THRESHOLD:
+                sparse_pages.append(page.page_number)
+
+    docling_rescued: dict[int, ParsedPage] = {}
+    if sparse_pages:
+        log.info(
+            "ocr.docling_rescue_sparse_pages",
+            path=str(source_path),
+            count=len(sparse_pages),
+            pages=sparse_pages[:10],
+        )
+        rescued, rescue_warnings = await _run_docling(source_path, only_pages=sparse_pages)
+        warnings.extend(rescue_warnings)
+        for rp in rescued:
+            docling_rescued[rp.page_number] = rp
+        if docling_rescued:
+            parser_chain.append("docling")
 
     pages: list[ParsedPage] = []
-    parser_chain: list[ParserName] = ["docling"]
-    for page in docling_pages:
+    for page in base_pages:
+        rescued_page = docling_rescued.get(page.page_number)
+        if rescued_page is not None and len(rescued_page.markdown.strip()) > len(page.markdown.strip()):
+            page = rescued_page
+
         classification = await classify_page(page.markdown, source_path, page.page_number)
         if classification == "handwritten":
             qwen_page = await _run_qwen2_5_vl(source_path, page.page_number)
@@ -62,12 +110,12 @@ async def parse_document(path: str | Path) -> ParsedDoc:
                     parser_chain.append("qwen2_5_vl")
                 continue
             # Handwritten page with no transcript fixture and no live VLM:
-            # do NOT silently fall through — flag the page so downstream
-            # extractors know its content may be missing/incomplete.
+            # do NOT silently fall through — flag it so downstream extractors
+            # know content may be missing.
             warning_msg = (
                 f"Page {page.page_number} classified as handwritten but no VLM endpoint "
                 "or transcript fixture was available; downstream extraction will rely on "
-                "Docling text only and may miss handwritten content."
+                "the OCR text only and may miss handwritten content."
             )
             log.warning(
                 "ocr.handwritten_page_no_vlm",
@@ -81,20 +129,11 @@ async def parse_document(path: str | Path) -> ParsedDoc:
                     update={
                         "classification": classification,
                         "warnings": updated_warnings,
-                        # Reduce confidence so downstream code treats this page conservatively.
                         "confidence": min(page.confidence, 0.4),
                     }
                 )
             )
             continue
-
-        if page.confidence < LOW_CONFIDENCE_THRESHOLD:
-            pdf_page = await _run_pdfplumber_page(source_path, page.page_number)
-            if pdf_page is not None and pdf_page.confidence >= page.confidence:
-                pages.append(pdf_page)
-                if "pdfplumber" not in parser_chain:
-                    parser_chain.append("pdfplumber")
-                continue
 
         pages.append(page.model_copy(update={"classification": classification}))
 
@@ -134,13 +173,16 @@ async def classify_page(markdown: str, path: Path, page_number: int) -> PageClas
     return _heuristic_classification(markdown)
 
 
-@retry(
-    retry=retry_if_exception_type(Exception),
-    wait=wait_exponential(multiplier=1, min=1, max=6),
-    stop=stop_after_attempt(3),
-    reraise=False,
-)
-async def _run_docling(path: Path) -> tuple[list[ParsedPage], list[str]]:
+async def _run_docling(
+    path: Path,
+    *,
+    only_pages: list[int] | None = None,
+) -> tuple[list[ParsedPage], list[str]]:
+    """Run Docling on the document. If ``only_pages`` is given, return only
+    those page numbers (still converts the whole doc — Docling has no
+    per-page API in 2026 — but slices the result).
+    """
+
     try:
         from docling.document_converter import DocumentConverter  # type: ignore[import-not-found]
 
@@ -150,21 +192,25 @@ async def _run_docling(path: Path) -> tuple[list[ParsedPage], list[str]]:
 
         markdown = await asyncio.to_thread(convert)
         pages = _split_markdown_pages(markdown)
-        if pages:
-            return [
-                ParsedPage(
-                    page_number=index,
-                    markdown=page_md,
-                    parser="docling",
-                    confidence=_estimate_confidence(page_md),
-                    classification=_heuristic_classification(page_md),
-                )
-                for index, page_md in enumerate(pages, start=1)
-            ], []
-    except Exception as exc:
-        return [], [f"Docling failed; falling back to pdfplumber: {exc}"]
+        if not pages:
+            return [], ["Docling returned no markdown."]
 
-    return [], ["Docling returned no markdown; falling back to pdfplumber."]
+        parsed = [
+            ParsedPage(
+                page_number=index,
+                markdown=page_md,
+                parser="docling",
+                confidence=_estimate_confidence(page_md),
+                classification=_heuristic_classification(page_md),
+            )
+            for index, page_md in enumerate(pages, start=1)
+        ]
+        if only_pages is not None:
+            wanted = set(only_pages)
+            parsed = [p for p in parsed if p.page_number in wanted]
+        return parsed, []
+    except Exception as exc:
+        return [], [f"Docling failed: {exc}"]
 
 
 async def _run_pdfplumber(path: Path) -> tuple[list[ParsedPage], list[str]]:
@@ -190,13 +236,6 @@ async def _run_pdfplumber(path: Path) -> tuple[list[ParsedPage], list[str]]:
         return pages, []
     except Exception as exc:
         return [], [f"pdfplumber fallback failed: {exc}"]
-
-
-async def _run_pdfplumber_page(path: Path, page_number: int) -> ParsedPage | None:
-    pages, _ = await _run_pdfplumber(path)
-    if 1 <= page_number <= len(pages):
-        return pages[page_number - 1]
-    return None
 
 
 async def _run_qwen2_5_vl(path: Path, page_number: int) -> ParsedPage | None:
