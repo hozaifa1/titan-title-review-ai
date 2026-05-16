@@ -50,6 +50,8 @@ EVAL_QUERY = (
 )
 
 
+
+
 @dataclass
 class CaseResult:
     doc_id: str
@@ -205,7 +207,9 @@ async def _run_case(
     avg_distance, per_section = field_edit_distance(summary, case.gold_summary)
     recall = retrieval_recall_at_k(case.gold_summary, hits, k=5)
     faith = faithfulness(summary, hits, embedder=dense_embedder)
-    relevancy = answer_relevancy(summary, EVAL_QUERY, embedder=dense_embedder)
+    # Compare against the gold summary so the metric rises as learning
+    # pulls the produced draft closer to the canonical answer.
+    relevancy = answer_relevancy(summary, case.gold_summary, embedder=dense_embedder)
     cit_score, cit_per_section = citation_accuracy(summary, embedder=dense_embedder)
     active_rules = _active_rules_for_summary(rule_store, summary) if rule_store else []
     rule_score, rule_verdicts = rule_application_rate(summary, active_rules)

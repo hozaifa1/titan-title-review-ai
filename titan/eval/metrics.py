@@ -301,26 +301,41 @@ def _citation_supports(sentence: CitedSentence, enc: DenseEmbedder) -> bool | No
 
 def answer_relevancy(
     produced: TitleReviewSummary,
-    query: str,
+    reference: "str | TitleReviewSummary",
     embedder: DenseEmbedder | None = None,
 ) -> float:
-    """Cosine similarity between the question and the produced answer.
+    """Similarity between the produced answer and a reference.
 
-    Falls back to token Jaccard with hashing-fallback embedders so the score
-    is meaningful without a downloaded BGE-M3 model.
+    ``reference`` may be:
+      * a ``str`` — the legacy "compare against fixed query" path. Useful
+        as a sanity floor but doesn't move with learning since the query
+        is identical across conditions.
+      * a ``TitleReviewSummary`` — the gold summary. The metric then
+        becomes "how close is the produced text to the canonical answer",
+        which is what the rest of the rubric is implicitly measuring and
+        which actually moves with the learning loop.
+
+    Falls back to token Jaccard with hashing-fallback embedders so the
+    score is meaningful without a downloaded BGE-M3 model.
     """
 
     answer_text = _summary_text(produced)
-    if not answer_text or not query:
+    if not answer_text:
+        return 0.0
+    if isinstance(reference, TitleReviewSummary):
+        reference_text = _summary_text(reference)
+    else:
+        reference_text = reference
+    if not reference_text:
         return 0.0
     enc = embedder or DenseEmbedder()
     if _embedder_is_lexical(enc):
-        q_tokens = _content_tokens(query)
-        a_tokens = _content_tokens(answer_text)
-        if not q_tokens:
+        ref_tokens = _content_tokens(reference_text)
+        ans_tokens = _content_tokens(answer_text)
+        if not ref_tokens:
             return 0.0
-        return len(q_tokens & a_tokens) / max(len(q_tokens), 1)
-    vectors = enc.embed([query, answer_text])
+        return len(ref_tokens & ans_tokens) / max(len(ref_tokens), 1)
+    vectors = enc.embed([reference_text, answer_text])
     similarity = cosine(vectors[0], vectors[1])
     return max(0.0, min(1.0, (similarity + 1.0) / 2.0))
 

@@ -3,20 +3,20 @@
   "rules_version": null,
   "edit_memory_size": 0,
   "aggregate": {
-    "field_edit_distance": 0.9329,
+    "field_edit_distance": 0.932,
     "retrieval_recall_at_5": 0.8,
     "faithfulness": 0.8968,
-    "answer_relevancy": 0.7053,
+    "answer_relevancy": 0.4513,
     "citation_accuracy": 0.4603,
     "rule_application_rate": 0.0
   },
   "cases": [
     {
       "doc_id": "wayne_county_commitment_0",
-      "field_edit_distance": 0.9821428571428571,
+      "field_edit_distance": 0.9776785714285714,
       "retrieval_recall_at_5": 1.0,
       "faithfulness": 1.0,
-      "answer_relevancy": 0.7368421052631579,
+      "answer_relevancy": 0.41284403669724773,
       "citation_accuracy": 0.4230769230769231,
       "rule_application_rate": 0.0,
       "per_section_edit_distance": [
@@ -28,9 +28,9 @@
         },
         {
           "section": "s2_legal_description",
-          "distance": 0.8571,
+          "distance": 0.8214,
           "gold_length": 179,
-          "produced_length": 161
+          "produced_length": 149
         },
         {
           "section": "s3_chain_of_title",
@@ -60,7 +60,7 @@
           "section": "s7_exceptions_schedule_b_ii",
           "distance": 1.0,
           "gold_length": 160,
-          "produced_length": 1367
+          "produced_length": 1358
         },
         {
           "section": "s8_taxes_and_survey_matters",
@@ -86,7 +86,7 @@
       "field_edit_distance": 0.9907407407407407,
       "retrieval_recall_at_5": 1.0,
       "faithfulness": 0.9285714285714286,
-      "answer_relevancy": 0.6842105263157895,
+      "answer_relevancy": 0.44554455445544555,
       "citation_accuracy": 0.46153846153846156,
       "rule_application_rate": 0.0,
       "per_section_edit_distance": [
@@ -156,7 +156,7 @@
       "field_edit_distance": 0.9527154558404558,
       "retrieval_recall_at_5": 0.0,
       "faithfulness": 0.6666666666666666,
-      "answer_relevancy": 0.7368421052631579,
+      "answer_relevancy": 0.37383177570093457,
       "citation_accuracy": 0.5,
       "rule_application_rate": 0.0,
       "per_section_edit_distance": [
@@ -226,7 +226,7 @@
       "field_edit_distance": 0.875443540017455,
       "retrieval_recall_at_5": 1.0,
       "faithfulness": 1.0,
-      "answer_relevancy": 0.7368421052631579,
+      "answer_relevancy": 0.5548780487804879,
       "citation_accuracy": 0.16666666666666666,
       "rule_application_rate": 0.0,
       "per_section_edit_distance": [
@@ -295,7 +295,7 @@
       "field_edit_distance": 0.8636651844532279,
       "retrieval_recall_at_5": 1.0,
       "faithfulness": 0.8888888888888888,
-      "answer_relevancy": 0.631578947368421,
+      "answer_relevancy": 0.46923076923076923,
       "citation_accuracy": 0.75,
       "rule_application_rate": 0.0,
       "per_section_edit_distance": [

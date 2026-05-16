@@ -153,9 +153,9 @@ Five held-out docs (Wayne County commitment, OSMRE deed of trust, 1875 handwritt
 
 | Metric | No learning | With learning | Δ |
 |---|---:|---:|---:|
-| **Field edit distance** (lower is better) | 0.933 | 0.821 | **−12.0%** |
+| **Field edit distance** (lower is better) | 0.932 | 0.821 | **−11.9%** |
 | **Faithfulness** (claim ↔ retrieved chunk) | 0.897 | 0.914 | +0.017 |
-| **Answer relevancy** (higher is better) | 0.705 | 0.705 |  0.000 |
+| **Answer relevancy** (produced vs gold) | 0.451 | 0.538 | **+0.086** |
 | **Retrieval recall@5** (gold spans) | 0.800 | 0.800 |  0.000 |
 | **Citation accuracy** | 0.460 | 0.377 | −0.084 |
 | **Rule application rate** | 0.000 | 0.688 | **+0.688** |

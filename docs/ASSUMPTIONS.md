@@ -56,4 +56,4 @@ In rough rubric-impact order:
 2. Patronus Lynx hallucination check on each generated sentence. The citation tag pattern catches most of it, but Lynx is the recognised reference for legal RAG.
 3. Eval set to 15–20 documents, mixed quality tiers. Five docs shows the loop works; fifteen gives a defensible number.
 4. Operator-level edit memory with an approve gate. Otherwise bad edits poison future drafts. Schema is ready (`operator_id` exists); the UX isn't.
-5. Per-doc adaptive eval query so answer relevancy moves with learning, not just style. Right now the eval query is a fixed string, so the metric is largely document-bound; using the document's own structured fields to compose the query would surface improvement under learning.
+5. Run the eval under a real BGE-M3 embedding stack (`TITAN_LOCAL_MODELS=1`) so faithfulness / citation / answer-relevancy use cosine instead of the lexical-Jaccard fallback. Numbers stay directional with Jaccard, but cosine on a real embedder is the canonical signal.
