@@ -62,7 +62,8 @@ async def test_draft_orchestrator_generates_eight_cited_sections_without_api_key
 
     assert summary.matter_id == "sample_commitment"
     assert summary.s1_vesting_and_estate.section_name == "Vesting and Estate"
-    assert len([field for field in type(summary).model_fields if field.startswith("s")]) == 8
+    # All 8 ALTA sections present in the dict (single source of truth: titan.sections).
+    assert len(summary.sections) == 8
     assert summary.s1_vesting_and_estate.summary[0].citations
     assert summary.s1_vesting_and_estate.summary[0].citations[0].doc_id == "sample_commitment"
     assert summary.overall_summary[0].citations

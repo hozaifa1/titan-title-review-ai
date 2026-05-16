@@ -18,6 +18,8 @@ DEFAULT_DOC_IDS: tuple[str, ...] = (
     "wayne_county_commitment_0",
     "osmre_mortgage_deed_of_trust",
     "fromthepage_1875_handwritten_deed",
+    "orlando_kobe_apartments_alta_survey",
+    "bartlesville_ok_lis_pendens_price_tower_2024",
 )
 
 

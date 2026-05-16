@@ -94,6 +94,7 @@ embeddings/
 # --- Generated pipeline output ---
 data/out/
 data/.llm_cache/
+data/.md_cache/
 data/eval/
 
 # --- LLM tracing exports ---

@@ -8,7 +8,7 @@ The brief explicitly asked for this section, and asked me not to bullshit it. So
 
 **Operators care about format consistency more than about novelty.** A title review summary is a structured artefact. Most of what an operator changes in a draft is shape: phrasing of vesting clauses, the way deed-book references are written, whether Schedule B-II items are quoted verbatim. That's the kind of pattern a retrieval-based learning loop can absorb cheaply. Style drift, not factual drift, is the dominant edit signal.
 
-**Three documents is enough to demonstrate the loop, not to claim a number.** The eval is paired (same docs pre and post), which controls for document difficulty. With three docs I can show direction; with three docs I can't put a confidence interval on it. The eval section is honest about that.
+**Five documents is enough to demonstrate the loop, not to claim a number.** The eval is paired (same docs pre and post), which controls for document difficulty. The set is Wayne County title commitment, OSMRE deed of trust, 1875 handwritten deed, Orlando ALTA/NSPS survey, and Bartlesville lis pendens — deliberately spanning instrument categories so the metrics aren't dominated by one shape. With five docs I can show direction; with five docs I still can't put a confidence interval on it. The eval section is honest about that.
 
 **A reviewer will read more than they'll run.** The README, `examples/`, and `eval/` directories are written to stand alone — you can grade the submission from the diff between `examples/output_v1.json`, `examples/edited_v1.json`, and `examples/output_v2.json` without ever installing dependencies.
 
@@ -26,9 +26,11 @@ The brief explicitly asked for this section, and asked me not to bullshit it. So
 
 ## What I traded off
 
-**Speed vs. test coverage.** Section drafting is sequential when it could be `asyncio.gather`-ed across the eight sections. I left it sequential because that made the Langfuse traces easier to read during the build, and because parallelising it doesn't change the rubric score. Estimated 4× speedup if you flip the switch.
+**Speed vs. test coverage.** Section drafting now fans out the eight sections with `asyncio.gather` plus a 250 ms stagger; the per-provider asyncio lock keeps the chain rotating across providers without burst-429s. This was sequential in the original build.
 
-**Gemini vs. local fallbacks.** Every external call (Gemini extraction, BGE-M3 hosted, Cohere reranker) has a local fallback. The local fallbacks are slower and produce worse outputs, but the pipeline still completes. That's a real cost — the code carries more branches than it would if I'd just assumed API access. The win is that a reviewer with no keys can still grade the submission.
+**Gemini vs. local fallbacks.** Every external call (LLM extraction, BGE-M3 hosted, Cohere reranker) has a local fallback. The local fallbacks are slower and produce worse outputs, but the pipeline still completes. The win is that a reviewer with no keys can still grade the submission. The newly enriched heuristic fallback for section drafting now pulls real party names, instrument types, lien creditors, and amounts from the structured extraction — even without any LLM provider available the produced text is gold-style prose, not bare counts.
+
+**Single source of truth for ALTA sections.** Adding a ninth section used to mean editing three places (orchestrator, metrics, schema). Now `titan/sections.py::SECTION_REGISTRY` is canonical and everything else derives from it; the schema stores sections in a dict with a flat-key JSON adapter so existing gold files load unchanged.
 
 **SQLite vs. Postgres.** SQLite is a single file, no daemon, no migrations. It's the right call for a demo and it'll scale to tens of thousands of edits. For real production you'd want Postgres — the schemas are already SQLModel-friendly so the migration is mechanical.
 
@@ -50,8 +52,8 @@ The brief explicitly asked for this section, and asked me not to bullshit it. So
 
 In rough rubric-impact order:
 
-1. Parallelise section generation with `asyncio.gather` — the same eval, ~4× faster, no quality cost.
-2. Real Qwen2.5-VL endpoint for the handwriting tier. Eliminates the transcript fixture and lets the system handle truly unknown handwritten inputs.
-3. Patronus Lynx hallucination check on each generated sentence. The citation tag pattern catches most of it, but Lynx is the recognised reference for legal RAG.
-4. Eval set to 15–20 documents, mixed quality tiers. Three docs shows the loop works; fifteen gives a defensible number.
-5. Operator-level edit memory with an approve gate. Otherwise bad edits poison future drafts. Schema is ready (`operator_id` exists); the UX isn't.
+1. Real Qwen2.5-VL endpoint for the handwriting tier. Eliminates the transcript fixture and lets the system handle truly unknown handwritten inputs.
+2. Patronus Lynx hallucination check on each generated sentence. The citation tag pattern catches most of it, but Lynx is the recognised reference for legal RAG.
+3. Eval set to 15–20 documents, mixed quality tiers. Five docs shows the loop works; fifteen gives a defensible number.
+4. Operator-level edit memory with an approve gate. Otherwise bad edits poison future drafts. Schema is ready (`operator_id` exists); the UX isn't.
+5. Per-doc adaptive eval query so answer relevancy moves with learning, not just style. Right now the eval query is a fixed string, so the metric is largely document-bound; using the document's own structured fields to compose the query would surface improvement under learning.

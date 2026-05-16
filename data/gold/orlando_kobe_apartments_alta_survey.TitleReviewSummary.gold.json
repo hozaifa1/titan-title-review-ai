@@ -1,0 +1,149 @@
+{
+  "matter_id": "orlando_kobe_apartments_alta_survey",
+  "property_address": "1840 E Colonial Drive, Orlando, Florida",
+  "parcel_id": null,
+  "effective_date": "2023-08-10",
+  "proposed_insured": "Maple Multi-Family Land SE, LP",
+  "policy_amount": null,
+  "generated_at": "2026-05-15",
+  "generator_version": "gold-v1",
+  "model": "human",
+  "rules_version": null,
+  "s1_vesting_and_estate": {
+    "section_name": "Vesting and Estate",
+    "summary": [
+      {
+        "text": "The survey is certified to Maple Multi-Family Land SE, LP, a Delaware Limited Partnership, and Chicago Title Insurance Company as the proposed insured; the survey itself does not establish vesting and the recorded vesting deed must be obtained.",
+        "citations": [
+          {"doc_id": "orlando_kobe_apartments_alta_survey", "page": 1, "char_span": [11800, 12000], "snippet": "TO: MAPLE MULTI-FAMILY LAND SE, LP A DELAWARE LIMITED PARTNERSHIP CHICAGO TITLE INSURANCE COMPANY"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Vested owner not stated on the survey; obtain the most recent recorded vesting deed for both Parcel 1 and Parcel 2."],
+    "flags": ["yellow"]
+  },
+  "s2_legal_description": {
+    "section_name": "Legal Description",
+    "summary": [
+      {
+        "text": "The land consists of Parcel 1 (Lots 1 and 12 and the East 8.44 feet of Lots 2 and 11, Block C, East View Park, Plat Book G, Page 89, Orange County, Florida, less the prescribed northerly strip) and Parcel 2 (Lots 1 and 2, Nguyen Development, Plat Book 66, Page 44).",
+        "citations": [
+          {"doc_id": "orlando_kobe_apartments_alta_survey", "page": 1, "char_span": [350, 1200], "snippet": "PARCEL 1: ALL OF LOTS 1 AND 12 AND THE EAST 8.44 FEET OF LOTS 2 AND 11, BLOCK C, EAST VIEW PARK ... PARCEL 2: LOTS 1 AND 2, NGUYEN DEVELOPMENT"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No tax-parcel APN listed on the survey; obtain from Orange County Property Appraiser."],
+    "flags": ["green"]
+  },
+  "s3_chain_of_title": {
+    "section_name": "Chain of Title",
+    "summary": [
+      {
+        "text": "The survey does not include a chain of title; it references Chicago Title Insurance Company commitment file 16-23-0004 with a Commitment Date of August 10, 2023 at 8:00 AM as the source of record title for the survey.",
+        "citations": [
+          {"doc_id": "orlando_kobe_apartments_alta_survey", "page": 1, "char_span": [200, 520], "snippet": "CHICAGO TITLE INSURANCE COMPANY ISSUING OFFICE FILE NUMBER: 16-23-0004 COMMITMENT DATE: AUGUST 10, 2023 @ 8:00 AM"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No grantor/grantee chain extracted; obtain the underlying Chicago Title commitment 16-23-0004 and recorded vesting deeds."],
+    "flags": ["yellow"]
+  },
+  "s4_open_encumbrances_and_liens": {
+    "section_name": "Open Encumbrances and Liens",
+    "summary": [
+      {
+        "text": "No open liens are recorded on the face of the survey; the Schedule B-II items listed reflect possible liens from the underlying commitment (taxes not yet due, county service-charge liens under Chapter 159, FL Statutes, and standard exceptions) but require a current commitment to confirm.",
+        "citations": [
+          {"doc_id": "orlando_kobe_apartments_alta_survey", "page": 1, "char_span": [8500, 9700], "snippet": "TAXES AND ASSESSMENTS FOR THE YEAR 2023 AND SUBSEQUENT YEARS... ANY LIEN PROVIDED BY COUNTY ORDINANCE OR BY CHAPTER 159, FLORIDA STATUTES"}
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No open liens enumerated on the survey itself; pull current commitment from Chicago Title file 16-23-0004."],
+    "flags": ["yellow"]
+  },
+  "s5_easements_and_restrictions": {
+    "section_name": "Easements and Restrictions",
+    "summary": [
+      {
+        "text": "One recorded utility easement affects Parcel 2: Orlando Utilities Commission Utility Easement recorded April 23, 2018, Official Records Instrument No. 20180240207, covering existing and future utilities running through, over, across, and/or under Lot 2.",
+        "citations": [
+          {"doc_id": "orlando_kobe_apartments_alta_survey", "page": 1, "char_span": [9800, 10200], "snippet": "ORLANDO UTILITIES COMMISSION UTILITY EASEMENT RECORDED APRIL 23, 2018, IN OFFICIAL RECORDS INSTRUMENT NO. 20180240207. (AS TO PARCEL 2)"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No subdivision restrictions or CC&Rs are listed on the survey; obtain plat notes for East View Park (PB G/89) and Nguyen Development (PB 66/44)."],
+    "flags": ["yellow"]
+  },
+  "s6_requirements_schedule_b_i": {
+    "section_name": "Requirements - Schedule B-I",
+    "summary": [
+      {
+        "text": "The survey alone does not list Schedule B-I requirements; pull the underlying Chicago Title commitment (file 16-23-0004, effective August 10, 2023) for the Section I closing requirements.",
+        "citations": [
+          {"doc_id": "orlando_kobe_apartments_alta_survey", "page": 1, "char_span": [200, 520], "snippet": "CHICAGO TITLE INSURANCE COMPANY ISSUING OFFICE FILE NUMBER: 16-23-0004"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Schedule B-I requirements not enumerated; obtain the commitment."],
+    "flags": ["yellow"]
+  },
+  "s7_exceptions_schedule_b_ii": {
+    "section_name": "Exceptions - Schedule B-II",
+    "summary": [
+      {
+        "text": "Schedule B-II items 1-6 are standard Florida exceptions (gap exception, taxes not yet due, standard exceptions A-D, sovereign lands, county service-charge liens, tenants' rights), items 7-9 are intentionally deleted, and item 10 is the OUC utility easement (Inst. 20180240207).",
+        "citations": [
+          {"doc_id": "orlando_kobe_apartments_alta_survey", "page": 1, "char_span": [8200, 10200], "snippet": "SCHEDULE B-II ITEMS: 1. DEFECTS, LIENS, ENCUMBRANCES... 10. ORLANDO UTILITIES COMMISSION UTILITY EASEMENT"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Schedule B-II items 7, 8, and 9 are intentionally deleted on the survey; confirm against the source commitment whether deletion stands."],
+    "flags": ["yellow"]
+  },
+  "s8_taxes_and_survey_matters": {
+    "section_name": "Taxes and Survey Matters",
+    "summary": [
+      {
+        "text": "The 2021 ALTA/NSPS survey (field date 7/23/2024, map date 7/23/2024) is certified by Mitchel W. Hill, FL LS 7374, includes Table A items 1, 2, 3, 4, 7(a), 7(b1), 8, 9, 11(a), 13, 16, and 18, and locates the property in FEMA Flood Zone X (Map 12095C0265F, effective September 25, 2009); 2023 and subsequent taxes are not yet due and payable.",
+        "citations": [
+          {"doc_id": "orlando_kobe_apartments_alta_survey", "page": 1, "char_span": [4000, 5000], "snippet": "THIS PROPERTY APPEARS TO LIE WITHIN ZONE 'X' OF THE CURRENT FEMA FLOOD RATE MAPS AND IS REFLECTED ON THE SURVEY. THE MAP IDENTIFICATION IS MAP NUMBER 12095C0265F WITH AN EFFECTIVE DATE OF SEPTEMBER 25, 2009"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Current Orange County tax certificate is not attached; obtain prior to closing."],
+    "flags": ["green"]
+  },
+  "overall_risk": "curable_issues",
+  "overall_summary": [
+    {
+      "text": "Curable issues: the ALTA/NSPS survey of 1840 E Colonial Drive (Lots 1, 12 and east strip of Lots 2/11, Block C, East View Park plus Lots 1-2 Nguyen Development) for Maple Multi-Family Land SE, LP is clean of survey-disclosed defects, but title cure requires the underlying Chicago Title commitment 16-23-0004, the recorded vesting deeds, and confirmation that the OUC utility easement (Inst. 20180240207) is accepted as a Schedule B-II exception.",
+      "citations": [
+        {"doc_id": "orlando_kobe_apartments_alta_survey", "page": 1, "char_span": [200, 520], "snippet": "CHICAGO TITLE INSURANCE COMPANY ISSUING OFFICE FILE NUMBER: 16-23-0004 COMMITMENT DATE: AUGUST 10, 2023"}
+      ],
+      "confidence": "high"
+    }
+  ],
+  "open_questions_for_client": [
+    "Provide the underlying Chicago Title commitment, file 16-23-0004 (effective August 10, 2023).",
+    "Provide the recorded vesting deeds for Parcel 1 and Parcel 2.",
+    "Provide the Orange County Property Appraiser parcel IDs (APNs) for both parcels.",
+    "Confirm acceptance of the OUC Utility Easement (Instrument 20180240207) as a Schedule B-II exception.",
+    "Provide a current Orange County tax certificate."
+  ]
+}

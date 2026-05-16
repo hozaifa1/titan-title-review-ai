@@ -38,7 +38,10 @@ class Settings(BaseSettings):
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
     groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
     openrouter_api_key: str | None = Field(default=None, alias="OPENROUTER_API_KEY")
-    openrouter_model: str = Field(default="deepseek/deepseek-chat-v3.1:free", alias="OPENROUTER_MODEL")
+    # NB: the previous default ``deepseek/deepseek-chat-v3.1:free`` 404s on
+    # OpenRouter; ``meta-llama/llama-3.3-70b-instruct:free`` is the most
+    # broadly available free-tier model as of 2026-05.
+    openrouter_model: str = Field(default="meta-llama/llama-3.3-70b-instruct:free", alias="OPENROUTER_MODEL")
     # Cerebras (60K tokens/min free, ~1,700 req/day) — OpenAI-compatible. Sign up: https://cloud.cerebras.ai/
     cerebras_api_key: str | None = Field(default=None, alias="CEREBRAS_API_KEY")
     cerebras_model: str = Field(default="llama3.3-70b", alias="CEREBRAS_MODEL")

@@ -295,35 +295,32 @@ async def _run_pdfplumber(path: Path) -> tuple[list[ParsedPage], list[str]]:
 
 
 async def _run_qwen2_5_vl(path: Path, page_number: int) -> ParsedPage | None:
-    transcript = _fixture_transcript_for(path)
-    if transcript:
-        page_text = _extract_fixture_page(transcript, page_number)
-        if page_text:
-            return ParsedPage(
-                page_number=page_number,
-                markdown=page_text,
-                parser="fixture_transcript",
-                confidence=0.95,
-                classification="handwritten",
-                warnings=["Offline handwritten fallback used checked-in human transcript fixture."],
-            )
+    """Delegate handwritten-page transcription to the VLM module.
 
-    # Production hook: callers can wrap this module and replace this function
-    # with a hosted/local Qwen2.5-VL implementation while preserving routing.
-    return None
+    The real VLM call (or its offline transcript-fixture stand-in) lives in
+    :mod:`titan.ingest.vlm` so we don't conflate the production seam with
+    the demo-mode fallback. See ``docs/VLM_INTEGRATION.md`` for wiring.
+    """
 
+    from titan.ingest.vlm import vlm_extract
 
-def _fixture_transcript_for(path: Path) -> str | None:
-    fixture = Path("data/gold") / f"{path.stem}.transcript.md"
-    if fixture.exists():
-        return fixture.read_text(encoding="utf-8")
-    return None
-
-
-def _extract_fixture_page(transcript: str, page_number: int) -> str:
-    pattern = rf"## Page {page_number}\s+(.*?)(?=\n## Page \d+\s+|\Z)"
-    match = re.search(pattern, transcript, re.IGNORECASE | re.DOTALL)
-    return match.group(1).strip() if match else transcript.strip()
+    result = await vlm_extract(path, page_number)
+    if result is None:
+        return None
+    text, source_label = result
+    warning = (
+        "Offline handwritten fallback used checked-in human transcript fixture."
+        if source_label == "fixture_transcript"
+        else "Handwritten page transcribed by configured Vision-LLM."
+    )
+    return ParsedPage(
+        page_number=page_number,
+        markdown=text,
+        parser=source_label,  # type: ignore[arg-type]
+        confidence=0.95 if source_label == "fixture_transcript" else 0.9,
+        classification="handwritten",
+        warnings=[warning],
+    )
 
 
 def _split_markdown_pages(markdown: str) -> list[str]:

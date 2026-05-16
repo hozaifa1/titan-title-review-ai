@@ -22,11 +22,15 @@ DEFAULT_OVERLAP_TOKENS = 80
 class ChunkerConfig:
     chunk_tokens: int = DEFAULT_CHUNK_TOKENS
     overlap_tokens: int = DEFAULT_OVERLAP_TOKENS
-    use_gemini_context: bool = True
+    # Heuristic context (Schedule/Page header + doc_type) is good enough for
+    # BM25+dense retrieval — eliminating the LLM context-sentence call per
+    # chunk cuts ~80% of provider calls on free tiers. Override via env to
+    # re-enable when running with abundant quota.
+    use_gemini_context: bool = False
 
 
 MAX_CHUNKS_PER_DOC = 400  # cap to bound memory + Gemini cost on huge docs
-_CONTEXT_CONCURRENCY = 8
+_CONTEXT_CONCURRENCY = 4
 
 
 async def chunk_title_document(

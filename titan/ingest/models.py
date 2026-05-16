@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-ParserName = Literal["docling", "pdfplumber", "qwen2_5_vl", "fixture_transcript"]
+ParserName = Literal["docling", "pdfplumber", "qwen2_5_vl", "fixture_transcript", "vlm"]
 PageClass = Literal["clean_text", "scanned_typed", "handwritten", "mixed_low_quality"]
 
 

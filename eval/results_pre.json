@@ -3,128 +3,128 @@
   "rules_version": null,
   "edit_memory_size": 0,
   "aggregate": {
-    "field_edit_distance": 0.9081,
-    "retrieval_recall_at_5": 0.6667,
-    "faithfulness": 0.0,
-    "answer_relevancy": 0.7288,
-    "citation_accuracy": 0.0673,
+    "field_edit_distance": 0.9329,
+    "retrieval_recall_at_5": 0.8,
+    "faithfulness": 0.8968,
+    "answer_relevancy": 0.7053,
+    "citation_accuracy": 0.4603,
     "rule_application_rate": 0.0
   },
   "cases": [
     {
       "doc_id": "wayne_county_commitment_0",
-      "field_edit_distance": 0.8838390544640544,
+      "field_edit_distance": 0.9821428571428571,
       "retrieval_recall_at_5": 1.0,
-      "faithfulness": 0.0,
-      "answer_relevancy": 0.7394135785142887,
-      "citation_accuracy": 0.1111111111111111,
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.7368421052631579,
+      "citation_accuracy": 0.4230769230769231,
       "rule_application_rate": 0.0,
       "per_section_edit_distance": [
         {
           "section": "s1_vesting_and_estate",
-          "distance": 0.8205,
+          "distance": 1.0,
           "gold_length": 245,
-          "produced_length": 274
+          "produced_length": 648
         },
         {
           "section": "s2_legal_description",
-          "distance": 0.8214,
+          "distance": 0.8571,
           "gold_length": 179,
-          "produced_length": 157
+          "produced_length": 161
         },
         {
           "section": "s3_chain_of_title",
           "distance": 1.0,
           "gold_length": 220,
-          "produced_length": 413
+          "produced_length": 309
         },
         {
           "section": "s4_open_encumbrances_and_liens",
-          "distance": 0.9697,
+          "distance": 1.0,
           "gold_length": 220,
-          "produced_length": 174
+          "produced_length": 305
         },
         {
           "section": "s5_easements_and_restrictions",
-          "distance": 0.9583,
+          "distance": 1.0,
           "gold_length": 170,
-          "produced_length": 170
+          "produced_length": 163
         },
         {
           "section": "s6_requirements_schedule_b_i",
-          "distance": 0.7778,
+          "distance": 1.0,
           "gold_length": 188,
-          "produced_length": 120
+          "produced_length": 785
         },
         {
           "section": "s7_exceptions_schedule_b_ii",
-          "distance": 0.76,
+          "distance": 1.0,
           "gold_length": 160,
-          "produced_length": 116
+          "produced_length": 1367
         },
         {
           "section": "s8_taxes_and_survey_matters",
-          "distance": 0.963,
+          "distance": 1.0,
           "gold_length": 178,
-          "produced_length": 171
+          "produced_length": 568
         }
       ],
       "per_section_citation_accuracy": {
-        "s1_vesting_and_estate": 0.0,
-        "s2_legal_description": 1.0,
-        "s3_chain_of_title": 0.0,
+        "s1_vesting_and_estate": 0.5,
+        "s2_legal_description": 0.0,
+        "s3_chain_of_title": 1.0,
         "s4_open_encumbrances_and_liens": 0.0,
         "s5_easements_and_restrictions": 0.0,
-        "s6_requirements_schedule_b_i": 0.0,
-        "s7_exceptions_schedule_b_ii": 0.0,
-        "s8_taxes_and_survey_matters": 0.0
+        "s6_requirements_schedule_b_i": 0.2857,
+        "s7_exceptions_schedule_b_ii": 0.4,
+        "s8_taxes_and_survey_matters": 1.0
       },
       "rule_verdicts": {}
     },
     {
       "doc_id": "osmre_mortgage_deed_of_trust",
-      "field_edit_distance": 0.9003100090056612,
+      "field_edit_distance": 0.9907407407407407,
       "retrieval_recall_at_5": 1.0,
-      "faithfulness": 0.0,
-      "answer_relevancy": 0.7088095697273691,
-      "citation_accuracy": 0.09090909090909091,
+      "faithfulness": 0.9285714285714286,
+      "answer_relevancy": 0.6842105263157895,
+      "citation_accuracy": 0.46153846153846156,
       "rule_application_rate": 0.0,
       "per_section_edit_distance": [
         {
           "section": "s1_vesting_and_estate",
-          "distance": 0.9459,
+          "distance": 1.0,
           "gold_length": 186,
-          "produced_length": 143
+          "produced_length": 423
         },
         {
           "section": "s2_legal_description",
-          "distance": 0.8519,
+          "distance": 0.9259,
           "gold_length": 165,
-          "produced_length": 146
+          "produced_length": 171
         },
         {
           "section": "s3_chain_of_title",
-          "distance": 0.6739,
+          "distance": 1.0,
           "gold_length": 276,
-          "produced_length": 296
+          "produced_length": 644
         },
         {
           "section": "s4_open_encumbrances_and_liens",
           "distance": 1.0,
           "gold_length": 222,
-          "produced_length": 671
+          "produced_length": 602
         },
         {
           "section": "s5_easements_and_restrictions",
-          "distance": 0.8333,
+          "distance": 1.0,
           "gold_length": 170,
-          "produced_length": 159
+          "produced_length": 244
         },
         {
           "section": "s6_requirements_schedule_b_i",
           "distance": 1.0,
           "gold_length": 195,
-          "produced_length": 372
+          "produced_length": 430
         },
         {
           "section": "s7_exceptions_schedule_b_ii",
@@ -134,18 +134,18 @@
         },
         {
           "section": "s8_taxes_and_survey_matters",
-          "distance": 0.8974,
+          "distance": 1.0,
           "gold_length": 219,
-          "produced_length": 171
+          "produced_length": 316
         }
       ],
       "per_section_citation_accuracy": {
         "s1_vesting_and_estate": 0.0,
         "s2_legal_description": 0.0,
-        "s3_chain_of_title": 0.0,
-        "s4_open_encumbrances_and_liens": 0.3333,
-        "s5_easements_and_restrictions": 0.0,
-        "s6_requirements_schedule_b_i": 0.0,
+        "s3_chain_of_title": 1.0,
+        "s4_open_encumbrances_and_liens": 0.6667,
+        "s5_easements_and_restrictions": 0.5,
+        "s6_requirements_schedule_b_i": 0.5,
         "s7_exceptions_schedule_b_ii": 0.0,
         "s8_taxes_and_survey_matters": 0.0
       },
@@ -153,65 +153,207 @@
     },
     {
       "doc_id": "fromthepage_1875_handwritten_deed",
-      "field_edit_distance": 0.9401976495726496,
+      "field_edit_distance": 0.9527154558404558,
       "retrieval_recall_at_5": 0.0,
-      "faithfulness": 0.0,
-      "answer_relevancy": 0.7382599908875664,
-      "citation_accuracy": 0.0,
+      "faithfulness": 0.6666666666666666,
+      "answer_relevancy": 0.7368421052631579,
+      "citation_accuracy": 0.5,
       "rule_application_rate": 0.0,
       "per_section_edit_distance": [
         {
           "section": "s1_vesting_and_estate",
-          "distance": 0.9778,
+          "distance": 1.0,
           "gold_length": 288,
-          "produced_length": 322
+          "produced_length": 533
         },
         {
           "section": "s2_legal_description",
           "distance": 0.8519,
           "gold_length": 189,
-          "produced_length": 90
+          "produced_length": 165
         },
         {
           "section": "s3_chain_of_title",
-          "distance": 0.8846,
+          "distance": 1.0,
           "gold_length": 306,
-          "produced_length": 162
+          "produced_length": 588
         },
         {
           "section": "s4_open_encumbrances_and_liens",
-          "distance": 0.9583,
+          "distance": 0.875,
           "gold_length": 137,
-          "produced_length": 112
+          "produced_length": 126
         },
         {
           "section": "s5_easements_and_restrictions",
-          "distance": 1.0,
+          "distance": 0.9333,
           "gold_length": 193,
-          "produced_length": 441
+          "produced_length": 182
         },
         {
           "section": "s6_requirements_schedule_b_i",
           "distance": 1.0,
           "gold_length": 199,
-          "produced_length": 258
+          "produced_length": 206
         },
         {
           "section": "s7_exceptions_schedule_b_ii",
-          "distance": 0.9231,
+          "distance": 0.9615,
           "gold_length": 177,
-          "produced_length": 84
+          "produced_length": 198
         },
         {
           "section": "s8_taxes_and_survey_matters",
-          "distance": 0.9259,
+          "distance": 1.0,
           "gold_length": 164,
-          "produced_length": 171
+          "produced_length": 288
+        }
+      ],
+      "per_section_citation_accuracy": {
+        "s1_vesting_and_estate": 0.75,
+        "s2_legal_description": 0.0,
+        "s3_chain_of_title": 0.6667,
+        "s4_open_encumbrances_and_liens": 0.0,
+        "s5_easements_and_restrictions": 1.0,
+        "s6_requirements_schedule_b_i": 1.0,
+        "s7_exceptions_schedule_b_ii": 0.0,
+        "s8_taxes_and_survey_matters": 0.0
+      },
+      "rule_verdicts": {}
+    },
+    {
+      "doc_id": "orlando_kobe_apartments_alta_survey",
+      "field_edit_distance": 0.875443540017455,
+      "retrieval_recall_at_5": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.7368421052631579,
+      "citation_accuracy": 0.16666666666666666,
+      "rule_application_rate": 0.0,
+      "per_section_edit_distance": [
+        {
+          "section": "s1_vesting_and_estate",
+          "distance": 0.7167,
+          "gold_length": 360,
+          "produced_length": 209
+        },
+        {
+          "section": "s2_legal_description",
+          "distance": 0.6269,
+          "gold_length": 351,
+          "produced_length": 431
+        },
+        {
+          "section": "s3_chain_of_title",
+          "distance": 0.8814,
+          "gold_length": 339,
+          "produced_length": 206
+        },
+        {
+          "section": "s4_open_encumbrances_and_liens",
+          "distance": 0.9077,
+          "gold_length": 395,
+          "produced_length": 175
+        },
+        {
+          "section": "s5_easements_and_restrictions",
+          "distance": 0.871,
+          "gold_length": 398,
+          "produced_length": 279
+        },
+        {
+          "section": "s6_requirements_schedule_b_i",
+          "distance": 1.0,
+          "gold_length": 252,
+          "produced_length": 410
+        },
+        {
+          "section": "s7_exceptions_schedule_b_ii",
+          "distance": 1.0,
+          "gold_length": 413,
+          "produced_length": 1656
+        },
+        {
+          "section": "s8_taxes_and_survey_matters",
+          "distance": 1.0,
+          "gold_length": 420,
+          "produced_length": 539
         }
       ],
       "per_section_citation_accuracy": {
         "s1_vesting_and_estate": 0.0,
-        "s3_chain_of_title": 0.0,
+        "s2_legal_description": 1.0,
+        "s4_open_encumbrances_and_liens": 0.0,
+        "s5_easements_and_restrictions": 0.0,
+        "s6_requirements_schedule_b_i": 0.5,
+        "s7_exceptions_schedule_b_ii": 0.1429,
+        "s8_taxes_and_survey_matters": 0.0
+      },
+      "rule_verdicts": {}
+    },
+    {
+      "doc_id": "bartlesville_ok_lis_pendens_price_tower_2024",
+      "field_edit_distance": 0.8636651844532279,
+      "retrieval_recall_at_5": 1.0,
+      "faithfulness": 0.8888888888888888,
+      "answer_relevancy": 0.631578947368421,
+      "citation_accuracy": 0.75,
+      "rule_application_rate": 0.0,
+      "per_section_edit_distance": [
+        {
+          "section": "s1_vesting_and_estate",
+          "distance": 0.9216,
+          "gold_length": 317,
+          "produced_length": 294
+        },
+        {
+          "section": "s2_legal_description",
+          "distance": 0.4,
+          "gold_length": 282,
+          "produced_length": 187
+        },
+        {
+          "section": "s3_chain_of_title",
+          "distance": 1.0,
+          "gold_length": 320,
+          "produced_length": 725
+        },
+        {
+          "section": "s4_open_encumbrances_and_liens",
+          "distance": 1.0,
+          "gold_length": 378,
+          "produced_length": 674
+        },
+        {
+          "section": "s5_easements_and_restrictions",
+          "distance": 0.9118,
+          "gold_length": 234,
+          "produced_length": 86
+        },
+        {
+          "section": "s6_requirements_schedule_b_i",
+          "distance": 0.8727,
+          "gold_length": 331,
+          "produced_length": 286
+        },
+        {
+          "section": "s7_exceptions_schedule_b_ii",
+          "distance": 0.9783,
+          "gold_length": 279,
+          "produced_length": 279
+        },
+        {
+          "section": "s8_taxes_and_survey_matters",
+          "distance": 0.825,
+          "gold_length": 245,
+          "produced_length": 207
+        }
+      ],
+      "per_section_citation_accuracy": {
+        "s2_legal_description": 1.0,
+        "s3_chain_of_title": 1.0,
+        "s4_open_encumbrances_and_liens": 0.5,
+        "s6_requirements_schedule_b_i": 1.0,
+        "s7_exceptions_schedule_b_ii": 1.0,
         "s8_taxes_and_survey_matters": 0.0
       },
       "rule_verdicts": {}

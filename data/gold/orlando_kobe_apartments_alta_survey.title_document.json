@@ -1,0 +1,180 @@
+{
+  "doc_id": "orlando_kobe_apartments_alta_survey",
+  "doc_type": "survey",
+  "file_path": "data\\raw\\survey\\orlando_kobe_apartments_alta_survey.pdf",
+  "page_count": 2,
+  "parsed_at": "2026-05-15",
+  "effective_date": {
+    "value": "2023-08-10",
+    "confidence": 0.95,
+    "source": {
+      "doc_id": "orlando_kobe_apartments_alta_survey",
+      "page": 1,
+      "char_span": [430, 520],
+      "snippet": "COMMITMENT DATE: AUGUST 10, 2023 @ 8:00 AM"
+    }
+  },
+  "proposed_insured": {
+    "value": "Maple Multi-Family Land SE, LP",
+    "confidence": 0.95,
+    "source": {
+      "doc_id": "orlando_kobe_apartments_alta_survey",
+      "page": 1,
+      "char_span": [11800, 11900],
+      "snippet": "TO: MAPLE MULTI-FAMILY LAND SE, LP A DELAWARE LIMITED PARTNERSHIP / CHICAGO TITLE INSURANCE COMPANY"
+    }
+  },
+  "estate_or_interest": null,
+  "vesting": [],
+  "policy_amount": null,
+  "legal_description": {
+    "description_type": "platted",
+    "text": "PARCEL 1: ALL OF LOTS 1 AND 12 AND THE EAST 8.44 FEET OF LOTS 2 AND 11, BLOCK C, EAST VIEW PARK, AS RECORDED IN PLAT BOOK G, PAGE 89, PUBLIC RECORDS OF ORANGE COUNTY, FLORIDA, LESS THAT PART OF SAID LOTS 1 AND 2 ... PARCEL 2: LOTS 1 AND 2, NGUYEN DEVELOPMENT, AS RECORDED IN PLAT BOOK 66, PAGE 44, PUBLIC RECORDS OF ORANGE COUNTY, FLORIDA.",
+    "plat_book": "G",
+    "plat_page": "89",
+    "lot": "1, 12 and East 8.44 ft of 2 and 11",
+    "block": "C",
+    "subdivision": "East View Park",
+    "parcel_id_apn": null
+  },
+  "parties": [
+    {"name": "Maple Multi-Family Land SE, LP", "role": "buyer", "is_entity": true, "capacity": "a Delaware Limited Partnership"},
+    {"name": "Chicago Title Insurance Company", "role": "lienholder", "is_entity": true, "capacity": "title insurer"},
+    {"name": "Orlando Utilities Commission", "role": "lienholder", "is_entity": true, "capacity": "utility easement holder"}
+  ],
+  "chain_of_title": [],
+  "open_liens": [],
+  "released_liens": [],
+  "easements": [
+    {
+      "easement_type": "utility",
+      "holder": "Orlando Utilities Commission",
+      "description": "Utility easement recorded April 23, 2018, Official Records Instrument No. 20180240207, affecting Parcel 2.",
+      "recorded_date": "2018-04-23",
+      "instrument_number": "20180240207",
+      "appurtenant_or_in_gross": "in_gross",
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [9800, 10100],
+        "snippet": "ORLANDO UTILITIES COMMISSION UTILITY EASEMENT RECORDED APRIL 23, 2018, IN OFFICIAL RECORDS INSTRUMENT NO. 20180240207. (AS TO PARCEL 2)"
+      }
+    }
+  ],
+  "restrictions": [],
+  "taxes": [],
+  "schedule_b_requirements": [],
+  "schedule_b_exceptions": [
+    {
+      "exception_id": "B-II-1",
+      "text": "Defects, liens, encumbrances, adverse claims or other matters, if any, created, first appearing in the public records or attaching subsequent to the effective date hereof but prior to the date the proposed insured acquires for value of record the estate or interest. (Not a survey matter)",
+      "category": "standard",
+      "is_standard": true,
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [8200, 8600],
+        "snippet": "1. DEFECTS, LIENS, ENCUMBRANCES, ADVERSE CLAIMS OR OTHER MATTERS"
+      }
+    },
+    {
+      "exception_id": "B-II-2",
+      "text": "Taxes and assessments for the year 2023 and subsequent years, which are not yet due and payable. (Not a survey matter)",
+      "category": "tax",
+      "is_standard": false,
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [8600, 8800],
+        "snippet": "2. TAXES AND ASSESSMENTS FOR THE YEAR 2023 AND SUBSEQUENT YEARS, WHICH ARE NOT YET DUE AND PAYABLE"
+      }
+    },
+    {
+      "exception_id": "B-II-3",
+      "text": "Standard exceptions: (A) any encroachment, encumbrance, violation, variation, or adverse circumstance affecting the title that would be disclosed by an accurate and complete land survey (none found); (B) rights of parties in possession; (C) any lien for services, labor, or materials; (D) taxes or assessments not shown as existing liens.",
+      "category": "standard",
+      "is_standard": true,
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [8800, 9300],
+        "snippet": "3. STANDARD EXCEPTIONS: A. ANY ENCROACHMENT, ENCUMBRANCE, VIOLATION, VARIATION..."
+      }
+    },
+    {
+      "exception_id": "B-II-4",
+      "text": "Any claim that any portion of the insured land is sovereign lands of the State of Florida, including submerged, filled or artificially exposed lands accreted to such land. (None observed or known to this surveyor)",
+      "category": "other",
+      "is_standard": false,
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [9300, 9500],
+        "snippet": "4. ANY CLAIM THAT ANY PORTION OF THE INSURED LAND IS SOVEREIGN LANDS OF THE STATE OF FLORIDA"
+      }
+    },
+    {
+      "exception_id": "B-II-5",
+      "text": "Any lien provided by county ordinance or by Chapter 159, Florida Statutes, in favor of any city, town, village or port authority for unpaid service charges for service by any water, sewer or gas system. (Not a survey matter)",
+      "category": "lien",
+      "is_standard": false,
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [9500, 9700],
+        "snippet": "5. ANY LIEN PROVIDED BY COUNTY ORDINANCE OR BY CHAPTER 159, FLORIDA STATUTES"
+      }
+    },
+    {
+      "exception_id": "B-II-6",
+      "text": "Rights of tenants occupying all or part of the insured land under unrecorded leases or rental agreements. (Not a survey matter)",
+      "category": "lease",
+      "is_standard": false,
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [9700, 9800],
+        "snippet": "6. RIGHTS OF TENANTS OCCUPYING ALL OR PART OF THE INSURED LAND UNDER UNRECORDED LEASES OR RENTAL AGREEMENTS"
+      }
+    },
+    {
+      "exception_id": "B-II-10",
+      "text": "Orlando Utilities Commission Utility Easement recorded April 23, 2018, in Official Records Instrument No. 20180240207. (As to Parcel 2) (Affects the subject property for any existing or future utilities that run through, over, across and/or under Lot 2)",
+      "category": "easement",
+      "is_standard": false,
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [9800, 10200],
+        "snippet": "10. ORLANDO UTILITIES COMMISSION UTILITY EASEMENT RECORDED APRIL 23, 2018, IN OFFICIAL RECORDS INSTRUMENT NO. 20180240207"
+      }
+    }
+  ],
+  "survey_matters": [
+    {
+      "issue_type": "other",
+      "description": "Property lies in FEMA Flood Zone X (Map 12095C0265F, effective September 25, 2009).",
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [4500, 4800],
+        "snippet": "THIS PROPERTY APPEARS TO LIE WITHIN ZONE 'X' OF THE CURRENT FEMA FLOOD RATE MAPS"
+      }
+    },
+    {
+      "issue_type": "easement_violation",
+      "description": "Orlando Utilities Commission utility easement (Instrument No. 20180240207) affects Parcel 2; future utilities may run through, over, across and/or under Lot 2.",
+      "source": {
+        "doc_id": "orlando_kobe_apartments_alta_survey",
+        "page": 1,
+        "char_span": [9800, 10200],
+        "snippet": "AFFECTS THE SUBJECT PROPERTY FOR ANY EXISTING OR FUTURE UTILITIES"
+      }
+    }
+  ],
+  "has_recording_stamp": false,
+  "notarized": false,
+  "extraction_warnings": [
+    "Hand-labelled gold; survey carries Schedule B-II references from Chicago Title commitment file 16-23-0004 dated 2023-08-10 but is not itself a recorded conveyance."
+  ]
+}

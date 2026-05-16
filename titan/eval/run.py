@@ -302,30 +302,9 @@ def _dump(result: EvalRunResult, improvement: dict[str, float] | None) -> str:
 
 
 def _document_markdown(title_document: TitleDocument) -> str:
-    pdf_path = Path(title_document.file_path)
-    if pdf_path.exists() and pdf_path.suffix.lower() == ".pdf":
-        try:
-            import pdfplumber  # type: ignore[import-not-found]
+    from titan.ingest.markdown_cache import read_markdown_for
 
-            with pdfplumber.open(pdf_path) as pdf:
-                pages = []
-                for index, page in enumerate(pdf.pages, start=1):
-                    pages.append(f"## Page {index}\n\n{page.extract_text() or ''}")
-                return "\n\n".join(pages)
-        except Exception:
-            pass
-    return "\n".join(
-        [
-            f"# {title_document.doc_id}",
-            f"Document type: {title_document.doc_type}",
-            "Vesting: " + ", ".join(party.name for party in title_document.vesting),
-            "Parties: "
-            + ", ".join(
-                f"{party.name} ({party.role})" for party in title_document.parties
-            ),
-            "Warnings: " + "; ".join(title_document.extraction_warnings),
-        ]
-    )
+    return read_markdown_for(title_document)
 
 
 def render_markdown_table(report: EvalReport) -> str:

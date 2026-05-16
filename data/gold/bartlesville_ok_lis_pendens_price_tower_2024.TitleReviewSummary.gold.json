@@ -1,0 +1,149 @@
+{
+  "matter_id": "bartlesville_ok_lis_pendens_price_tower_2024",
+  "property_address": "510 Southeast Dewey Ave., Bartlesville, Oklahoma 74003",
+  "parcel_id": null,
+  "effective_date": "2024-10-01",
+  "proposed_insured": null,
+  "policy_amount": null,
+  "generated_at": "2026-05-15",
+  "generator_version": "gold-v1",
+  "model": "human",
+  "rules_version": null,
+  "s1_vesting_and_estate": {
+    "section_name": "Vesting and Estate",
+    "summary": [
+      {
+        "text": "Record title appears vested in Copper Tree, Inc. and Green Copper Holdings, LLC, the named Defendants in the action; the Plaintiff McFarlin Building, LLC asserts a contractual right but no current vested interest.",
+        "citations": [
+          {"doc_id": "bartlesville_ok_lis_pendens_price_tower_2024", "page": 1, "char_span": [70, 320], "snippet": "THE MCFARLIN BUILDING, LLC, Plaintiff, ... COPPER TREE, INC., GREEN COPPER HOLDINGS, LLC, Defendants."}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Estate or interest is not stated on the lis pendens; confirm fee simple from the recorded vesting deed."],
+    "flags": ["yellow"]
+  },
+  "s2_legal_description": {
+    "section_name": "Legal Description",
+    "summary": [
+      {
+        "text": "The subject property is described as Block forty-seven (47) of the Original Town, Now City of Bartlesville, Oklahoma, also known as 510 Southeast Dewey Ave., Bartlesville, Oklahoma 74003.",
+        "citations": [
+          {"doc_id": "bartlesville_ok_lis_pendens_price_tower_2024", "page": 1, "char_span": [760, 940], "snippet": "Block forty-seven (47) of the Original Town, Now City of Bartlesville, Oklahoma, also known as 510 Southeast Dewey Ave."}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No lot/subdivision plat reference; obtain the recorded plat for Block 47 of the Original Town."],
+    "flags": ["green"]
+  },
+  "s3_chain_of_title": {
+    "section_name": "Chain of Title",
+    "summary": [
+      {
+        "text": "The instrument is a court-filed Notice of Pendency of Action in Washington County District Court Case No. CV-2024-158; it does not convey title but clouds it pending resolution of the specific-performance action filed September 27, 2024.",
+        "citations": [
+          {"doc_id": "bartlesville_ok_lis_pendens_price_tower_2024", "page": 1, "char_span": [300, 760], "snippet": "filed a petition in the District Court of Washington County, State of Oklahoma, in case No. CV-2024-158"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No prior or subsequent chain links extracted; obtain full back-title for Block 47."],
+    "flags": ["yellow"]
+  },
+  "s4_open_encumbrances_and_liens": {
+    "section_name": "Open Encumbrances and Liens",
+    "summary": [
+      {
+        "text": "The lis pendens recorded October 1, 2024 in Washington County Case CV-2024-158 acts as a cloud on title in favor of The McFarlin Building, LLC; treat as an open equitable lien until the action is dismissed, withdrawn, or otherwise terminated of record.",
+        "citations": [
+          {"doc_id": "bartlesville_ok_lis_pendens_price_tower_2024", "page": 1, "char_span": [300, 760], "snippet": "NOTICE OF PENDENCY OF ACTION (LIS PENDENS)... seeking specific performance of that certain Contract of Sale dated May 23, 2024"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Recording book and page are not on the face of the document; obtain the Washington County recorder's stamp/instrument number."],
+    "flags": ["red"]
+  },
+  "s5_easements_and_restrictions": {
+    "section_name": "Easements and Restrictions",
+    "summary": [
+      {
+        "text": "No easements or restrictions appear in the lis pendens; obtain the recorded plat for Block 47 and a current title commitment to confirm subdivision restrictions and utility easements.",
+        "citations": [
+          {"doc_id": "bartlesville_ok_lis_pendens_price_tower_2024", "page": 1, "char_span": [760, 940], "snippet": "Block forty-seven (47) of the Original Town, Now City of Bartlesville, Oklahoma"}
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No easements extracted.", "No restrictions extracted."],
+    "flags": ["yellow"]
+  },
+  "s6_requirements_schedule_b_i": {
+    "section_name": "Requirements - Schedule B-I",
+    "summary": [
+      {
+        "text": "Schedule B-I should require dismissal, withdrawal, or release of the lis pendens recorded October 1, 2024 in Washington County, OK Case No. CV-2024-158 (McFarlin Building, LLC v. Copper Tree, Inc. and Green Copper Holdings, LLC) before policy issuance.",
+        "citations": [
+          {"doc_id": "bartlesville_ok_lis_pendens_price_tower_2024", "page": 1, "char_span": [300, 760], "snippet": "case No. CV-2024-158, styled: The McFarlin Building, LLC vs. Copper Tree, Inc., Green Copper Holdings, LLC"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No Schedule B-I requirements enumerated on the face of the lis pendens itself."],
+    "flags": ["red"]
+  },
+  "s7_exceptions_schedule_b_ii": {
+    "section_name": "Exceptions - Schedule B-II",
+    "summary": [
+      {
+        "text": "Until terminated of record, the Washington County lis pendens (CV-2024-158) should be carried as a specific Schedule B-II exception in addition to standard exceptions for parties in possession and matters of survey.",
+        "citations": [
+          {"doc_id": "bartlesville_ok_lis_pendens_price_tower_2024", "page": 1, "char_span": [300, 760], "snippet": "NOTICE OF PENDENCY OF ACTION (LIS PENDENS)"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["Schedule B-II exceptions are not enumerated on the lis pendens."],
+    "flags": ["red"]
+  },
+  "s8_taxes_and_survey_matters": {
+    "section_name": "Taxes and Survey Matters",
+    "summary": [
+      {
+        "text": "The lis pendens does not address taxes or survey matters; obtain a current Washington County tax certificate and a current ALTA/NSPS survey for Block 47 of the Original Town of Bartlesville.",
+        "citations": [
+          {"doc_id": "bartlesville_ok_lis_pendens_price_tower_2024", "page": 1, "char_span": [760, 940], "snippet": "Block forty-seven (47) of the Original Town, Now City of Bartlesville, Oklahoma"}
+        ],
+        "confidence": "high"
+      }
+    ],
+    "bullet_findings": [],
+    "gaps": ["No tax records extracted.", "No survey matters extracted."],
+    "flags": ["yellow"]
+  },
+  "overall_risk": "material_issues",
+  "overall_summary": [
+    {
+      "text": "Material issues: the property at 510 SE Dewey Ave., Bartlesville, OK (Block 47 of the Original Town) is subject to an open lis pendens filed October 1, 2024 in Washington County Case CV-2024-158 by The McFarlin Building, LLC seeking specific performance — title is clouded and policy issuance requires termination of record before closing.",
+      "citations": [
+        {"doc_id": "bartlesville_ok_lis_pendens_price_tower_2024", "page": 1, "char_span": [300, 940], "snippet": "NOTICE OF PENDENCY OF ACTION (LIS PENDENS)... Block forty-seven (47) of the Original Town"}
+      ],
+      "confidence": "high"
+    }
+  ],
+  "open_questions_for_client": [
+    "Obtain a certified copy of the recorded lis pendens showing the Washington County recorder's stamp and instrument number.",
+    "Confirm current status of Washington County District Court Case CV-2024-158 (still pending, dismissed, or judgment entered).",
+    "Obtain the recorded vesting deed for Copper Tree, Inc. and Green Copper Holdings, LLC to confirm chain of title to Block 47.",
+    "Obtain a current Washington County tax certificate for Block 47 / 510 SE Dewey Ave.",
+    "Obtain a current ALTA/NSPS survey of the subject property."
+  ]
+}

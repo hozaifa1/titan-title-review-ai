@@ -37,16 +37,11 @@ from titan.schemas import (
     TitleReviewSummary,
 )
 
-SECTION_FIELDS: tuple[str, ...] = (
-    "s1_vesting_and_estate",
-    "s2_legal_description",
-    "s3_chain_of_title",
-    "s4_open_encumbrances_and_liens",
-    "s5_easements_and_restrictions",
-    "s6_requirements_schedule_b_i",
-    "s7_exceptions_schedule_b_ii",
-    "s8_taxes_and_survey_matters",
-)
+# Single source of truth — derived from :mod:`titan.sections`. Adding a new
+# section means editing SECTION_REGISTRY there; metrics iterate automatically.
+from titan.sections import section_field_names
+
+SECTION_FIELDS: tuple[str, ...] = section_field_names()
 
 
 @dataclass(frozen=True)
@@ -100,6 +95,24 @@ def retrieval_recall_at_k(
 
 FAITHFULNESS_THRESHOLD = 0.55  # cosine cutoff for "claim supported by chunk"
 CITATION_ACCURACY_THRESHOLD = 0.45  # cosine cutoff for "snippet supports claim"
+# Hashing-fallback embeddings produce near-random cosine values, so we
+# bypass the cosine path entirely and use token overlap when the embedder
+# isn't backed by a real model. Threshold tuned for title-review prose.
+FAITHFULNESS_LEXICAL_OVERLAP = 0.18
+CITATION_LEXICAL_OVERLAP = 0.15
+
+
+def _embedder_is_lexical(enc: DenseEmbedder) -> bool:
+    """True when the embedder is the hashing fallback (no real model loaded)."""
+    return getattr(enc, "backend", "") == "hashing-fallback"
+
+
+def _content_tokens(text: str) -> set[str]:
+    return {
+        token
+        for token in re.findall(r"\w+", text.lower())
+        if len(token) >= 4 and token not in _STOPWORDS
+    }
 
 
 def faithfulness(
@@ -113,12 +126,34 @@ def faithfulness(
     similarity against any retrieved chunk meets ``FAITHFULNESS_THRESHOLD``.
     The aggregate is the supported fraction. This matches RAGAS faithfulness
     semantics (binary per-claim verdict, not a soft average) without an LLM.
+
+    When the only embedder available is the deterministic hashing fallback
+    we substitute token-overlap (cosine of hash vectors is meaningless), so
+    the metric remains a usable signal in CI without a downloaded model.
     """
 
     claims = list(_iter_claims(produced))
     if not claims or not hits:
         return 0.0
     enc = embedder or DenseEmbedder()
+    if _embedder_is_lexical(enc):
+        chunk_token_sets = [_content_tokens(hit.chunk.contextual_text) for hit in hits]
+        supported = 0
+        for claim in claims:
+            claim_tokens = _content_tokens(claim)
+            if not claim_tokens:
+                continue
+            best = 0.0
+            for chunk_tokens in chunk_token_sets:
+                if not chunk_tokens:
+                    continue
+                overlap = len(claim_tokens & chunk_tokens) / len(claim_tokens)
+                if overlap > best:
+                    best = overlap
+            if best >= FAITHFULNESS_LEXICAL_OVERLAP:
+                supported += 1
+        return supported / len(claims)
+
     chunk_vectors = enc.embed([hit.chunk.contextual_text for hit in hits])
     claim_vectors = enc.embed(claims)
     supported = 0
@@ -223,6 +258,10 @@ def _citation_supports(sentence: CitedSentence, enc: DenseEmbedder) -> bool | No
     Returns ``None`` when there is nothing to score (no citation or empty
     snippet) — those sentences are excluded from the citation-accuracy
     denominator.
+
+    With a real embedding model: jaccard >= 0.10 AND cosine >= threshold.
+    With the hashing fallback: jaccard >= ``CITATION_LEXICAL_OVERLAP`` only,
+    since hash-cosine is uninformative.
     """
 
     candidate_snippets = [
@@ -230,21 +269,25 @@ def _citation_supports(sentence: CitedSentence, enc: DenseEmbedder) -> bool | No
     ]
     if not candidate_snippets or not sentence.text.strip():
         return None
-    claim_tokens = {
-        token
-        for token in re.findall(r"\w+", sentence.text.lower())
-        if len(token) >= 4 and token not in _STOPWORDS
-    }
+    claim_tokens = _content_tokens(sentence.text)
     if not claim_tokens:
         return None
+    lexical_only = _embedder_is_lexical(enc)
+    if lexical_only:
+        for snippet in candidate_snippets:
+            snippet_tokens = _content_tokens(snippet)
+            if not snippet_tokens:
+                continue
+            jaccard = len(claim_tokens & snippet_tokens) / max(
+                len(claim_tokens | snippet_tokens), 1
+            )
+            if jaccard >= CITATION_LEXICAL_OVERLAP:
+                return True
+        return False
     claim_vec = enc.embed([sentence.text])[0]
     snippet_vecs = enc.embed(candidate_snippets)
     for snippet, snippet_vec in zip(candidate_snippets, snippet_vecs):
-        snippet_tokens = {
-            token
-            for token in re.findall(r"\w+", snippet.lower())
-            if len(token) >= 4 and token not in _STOPWORDS
-        }
+        snippet_tokens = _content_tokens(snippet)
         if not snippet_tokens:
             continue
         jaccard = len(claim_tokens & snippet_tokens) / max(
@@ -261,12 +304,22 @@ def answer_relevancy(
     query: str,
     embedder: DenseEmbedder | None = None,
 ) -> float:
-    """Cosine similarity between the question and the produced answer."""
+    """Cosine similarity between the question and the produced answer.
+
+    Falls back to token Jaccard with hashing-fallback embedders so the score
+    is meaningful without a downloaded BGE-M3 model.
+    """
 
     answer_text = _summary_text(produced)
     if not answer_text or not query:
         return 0.0
     enc = embedder or DenseEmbedder()
+    if _embedder_is_lexical(enc):
+        q_tokens = _content_tokens(query)
+        a_tokens = _content_tokens(answer_text)
+        if not q_tokens:
+            return 0.0
+        return len(q_tokens & a_tokens) / max(len(q_tokens), 1)
     vectors = enc.embed([query, answer_text])
     similarity = cosine(vectors[0], vectors[1])
     return max(0.0, min(1.0, (similarity + 1.0) / 2.0))

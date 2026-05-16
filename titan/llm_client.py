@@ -48,6 +48,29 @@ def _is_rate_limit_error(exc: BaseException) -> bool:
     return any(pattern in text for pattern in _RATE_LIMIT_PATTERNS)
 
 
+# Permanent-error patterns: 4xx that won't recover within a session.
+# Used to mark a provider dead on the first occurrence so we don't burn
+# the per-provider attempt count chasing a misconfiguration.
+_PERMANENT_ERROR_PATTERNS = (
+    "400 bad request",
+    "401",
+    "403",
+    "404",
+    "not found",
+    "invalid api key",
+    "authentication",
+    "unsupported model",
+    "model_not_found",
+)
+
+
+def _is_permanent_error(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    if any(pattern in text for pattern in _RATE_LIMIT_PATTERNS):
+        return False  # rate-limit handled separately
+    return any(pattern in text for pattern in _PERMANENT_ERROR_PATTERNS)
+
+
 def _semaphore_loop_alive(sem: asyncio.Semaphore) -> bool:
     """Best-effort check that the semaphore's bound loop is still open."""
     loop = getattr(sem, "_loop", None)
@@ -105,21 +128,64 @@ class LLMClient:
     # implicitly bound to the loop where it's first awaited; reusing one across
     # loops would deadlock indefinitely on closed loops (a real bug we hit).
     _loop_sems: dict[int, asyncio.Semaphore] = {}
-    # Providers that have failed-hard (rate-limit / auth / config) during this
-    # process lifetime. We skip them on subsequent calls so a single 429 doesn't
-    # cause every future request to waste 15s re-confirming the provider is dead.
-    # This is critical: ``asyncio.to_thread`` orphans threads on timeout (Python
-    # threads can't be cancelled), so repeatedly hitting a stalled provider
-    # drains the executor pool and stalls the whole pipeline.
+    # Providers that have failed-hard (auth / config) during this process
+    # lifetime. We skip them permanently so a misconfigured key doesn't burn
+    # quota retries forever.
     _dead_providers: set[str] = set()
+    # Providers cooling down after a 429. Maps provider → unix timestamp at
+    # which the provider can be retried. A request that sees ``cooldown_until
+    # > now()`` skips without spending a request; once expired the provider
+    # gets another chance.
+    _provider_cooldown_until: dict[str, float] = {}
+    # Per-provider asyncio locks. Concurrent calls to the same provider must
+    # serialise: if 8 sections all hit Cerebras simultaneously and the first
+    # 429s, we waste 7 quota slots before the dead-set is updated. Holding a
+    # per-provider lock during the request means concurrent waiters re-check
+    # the dead set after the first failure and skip.
+    _provider_locks: dict[tuple[int, str], asyncio.Lock] = {}
 
     @classmethod
     def mark_provider_dead(cls, provider: str) -> None:
         cls._dead_providers.add(provider)
 
     @classmethod
+    def set_provider_cooldown(cls, provider: str, seconds: float) -> None:
+        """Skip ``provider`` for ``seconds`` from now; auto-recovers on next call."""
+        import time
+
+        cls._provider_cooldown_until[provider] = time.time() + max(1.0, seconds)
+
+    @classmethod
+    def _is_provider_cooled_down(cls, provider: str) -> bool:
+        """True iff the provider is in cooldown and the deadline hasn't passed."""
+        import time
+
+        until = cls._provider_cooldown_until.get(provider)
+        if until is None:
+            return False
+        if time.time() >= until:
+            cls._provider_cooldown_until.pop(provider, None)
+            return False
+        return True
+
+    @classmethod
     def reset_dead_providers(cls) -> None:
         cls._dead_providers.clear()
+        cls._provider_cooldown_until.clear()
+
+    @classmethod
+    def _provider_lock(cls, provider: str) -> asyncio.Lock:
+        """Per-(loop, provider) lock, lazily created."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.Lock()
+        key = (id(loop), provider)
+        lock = cls._provider_locks.get(key)
+        if lock is None:
+            lock = asyncio.Lock()
+            cls._provider_locks[key] = lock
+        return lock
 
     @classmethod
     def _acquire_semaphore(cls, size: int) -> asyncio.Semaphore:
@@ -232,57 +298,112 @@ class LLMClient:
             if handler is None:
                 continue
             if provider in type(self)._dead_providers:
-                # Already marked dead this session — skip without spending a request.
                 continue
-            for attempt in range(1, max_attempts_per_provider + 1):
-                try:
-                    # Hard per-call ceiling. Without this a stuck provider
-                    # (Gemini SDK worker thread, slow streaming response, etc.)
-                    # blocks the pipeline forever — the original stall bug.
-                    return await asyncio.wait_for(
-                        handler(prompt, temperature, response_json),
-                        timeout=per_call,
-                    )
-                except asyncio.TimeoutError:
-                    last_exc = TimeoutError(f"{provider} exceeded {per_call}s per-call timeout")
-                    log.warning(
-                        "llm.provider_timeout",
-                        provider=provider,
-                        attempt=attempt,
-                        per_call=per_call,
-                    )
-                    # Stalls leak threads on Gemini specifically; mark dead so we
-                    # don't keep draining the executor pool with orphaned work.
-                    type(self).mark_provider_dead(provider)
-                    break
-                except Exception as exc:  # pragma: no cover - exercised via integration tests
-                    last_exc = exc
-                    rate_limited = _is_rate_limit_error(exc)
-                    retry_after = _retry_after_seconds(exc)
-                    log.warning(
-                        "llm.provider_failed",
-                        provider=provider,
-                        attempt=attempt,
-                        rate_limited=rate_limited,
-                        retry_after=retry_after,
-                        error=str(exc)[:200],
-                    )
-                    if rate_limited:
-                        # If the wait is recoverable AND short, sit it out;
-                        # otherwise the provider is dead for this session.
-                        if retry_after is not None and retry_after <= 8 and attempt < max_attempts_per_provider:
-                            await asyncio.sleep(retry_after + 0.25)
-                            continue
-                        type(self).mark_provider_dead(provider)
-                        break
-                    if attempt < max_attempts_per_provider:
-                        await asyncio.sleep(1.5 * attempt)
-                        continue
+            if type(self)._is_provider_cooled_down(provider):
+                continue
+            # Serialise concurrent calls per provider so a 429 storm doesn't
+            # burn every quota slot before the cooldown is set. Inside the
+            # lock we re-check dead/cooldown: if a concurrent earlier call
+            # already proved this provider unavailable, we drop without
+            # spending a request.
+            provider_lock = type(self)._provider_lock(provider)
+            async with provider_lock:
+                if provider in type(self)._dead_providers:
+                    continue
+                if type(self)._is_provider_cooled_down(provider):
+                    continue
+                attempt_result = await self._attempt_provider(
+                    handler,
+                    provider,
+                    prompt,
+                    temperature,
+                    response_json,
+                    per_call,
+                    max_attempts_per_provider,
+                )
+            if attempt_result is not None:
+                if isinstance(attempt_result, Exception):
+                    last_exc = attempt_result
+                else:
+                    return attempt_result
             log.warning("llm.provider_exhausted", provider=provider)
 
+        # If everything was on cooldown rather than failing, surface a clear
+        # marker so callers can decide whether to wait or fall back.
+        if last_exc is None:
+            last_exc = LLMUnavailableError(
+                "All providers cooling down or marked dead; no live attempt was made"
+            )
         raise LLMUnavailableError(
             f"All providers in chain {providers} failed; last error: {last_exc}"
         ) from last_exc
+
+    async def _attempt_provider(
+        self,
+        handler: Any,
+        provider: str,
+        prompt: str,
+        temperature: float,
+        response_json: bool,
+        per_call: float,
+        max_attempts_per_provider: int,
+    ) -> "LLMResult | Exception | None":
+        """Inner per-provider attempt loop. Returns the result, last exception, or None."""
+        last_exc: Exception | None = None
+        for attempt in range(1, max_attempts_per_provider + 1):
+            try:
+                return await asyncio.wait_for(
+                    handler(prompt, temperature, response_json),
+                    timeout=per_call,
+                )
+            except asyncio.TimeoutError:
+                last_exc = TimeoutError(f"{provider} exceeded {per_call}s per-call timeout")
+                log.warning(
+                    "llm.provider_timeout",
+                    provider=provider,
+                    attempt=attempt,
+                    per_call=per_call,
+                )
+                type(self).mark_provider_dead(provider)
+                break
+            except Exception as exc:
+                last_exc = exc
+                rate_limited = _is_rate_limit_error(exc)
+                permanent = _is_permanent_error(exc)
+                retry_after = _retry_after_seconds(exc)
+                log.warning(
+                    "llm.provider_failed",
+                    provider=provider,
+                    attempt=attempt,
+                    rate_limited=rate_limited,
+                    permanent=permanent,
+                    retry_after=retry_after,
+                    error=str(exc)[:200],
+                )
+                if rate_limited:
+                    if (
+                        retry_after is not None
+                        and retry_after <= 8
+                        and attempt < max_attempts_per_provider
+                    ):
+                        await asyncio.sleep(retry_after + 0.25)
+                        continue
+                    # Cool down rather than permanently kill — free tiers
+                    # recover after a few seconds to a minute. Cap at 60s so
+                    # a misreported retry_after of "1 hour" doesn't lock us
+                    # out for the whole session.
+                    cooldown = float(retry_after) if retry_after is not None else 30.0
+                    cooldown = min(max(cooldown, 5.0), 60.0)
+                    type(self).set_provider_cooldown(provider, cooldown)
+                    break
+                if permanent:
+                    # Bad model id / 404 / 401 won't recover in-session — skip.
+                    type(self).mark_provider_dead(provider)
+                    break
+                if attempt < max_attempts_per_provider:
+                    await asyncio.sleep(1.5 * attempt)
+                    continue
+        return last_exc
 
     async def generate_json(
         self,

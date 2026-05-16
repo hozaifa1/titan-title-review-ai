@@ -18,16 +18,10 @@ from titan.schemas import (
     TitleReviewSummary,
 )
 
-SECTION_FIELDS = (
-    "s1_vesting_and_estate",
-    "s2_legal_description",
-    "s3_chain_of_title",
-    "s4_open_encumbrances_and_liens",
-    "s5_easements_and_restrictions",
-    "s6_requirements_schedule_b_i",
-    "s7_exceptions_schedule_b_ii",
-    "s8_taxes_and_survey_matters",
-)
+# Single source of truth — :mod:`titan.sections.SECTION_REGISTRY`.
+from titan.sections import section_field_names
+
+SECTION_FIELDS = section_field_names()
 
 
 def diff_summaries(

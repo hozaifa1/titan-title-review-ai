@@ -445,20 +445,15 @@ def _flush_langfuse() -> None:
 
 
 def _read_markdown_for(document: TitleDocument) -> str:
-    path = Path(document.file_path)
-    if path.exists() and path.suffix.lower() == ".pdf":
-        try:
-            import pdfplumber
+    """Delegate to the disk-cached, per-page-timeout reader.
 
-            with pdfplumber.open(path) as pdf:
-                pages = []
-                for index, page in enumerate(pdf.pages, start=1):
-                    pages.append(f"## Page {index}\n\n{page.extract_text() or ''}")
-                return "\n\n".join(pages)
-        except Exception:
-            pass
+    Centralising here so the CLI and eval paths share one implementation
+    that doesn't stall on pathological survey pages.
+    """
 
-    return _document_to_markdown(document)
+    from titan.ingest.markdown_cache import read_markdown_for
+
+    return read_markdown_for(document)
 
 
 def _document_to_markdown(document: TitleDocument) -> str:
