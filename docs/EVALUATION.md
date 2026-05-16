@@ -33,23 +33,23 @@ All five have hand-labelled gold `TitleReviewSummary` JSONs in `data/gold/`. The
 
 | Metric | Pre-learning | Post-learning | Δ |
 |---|---:|---:|---:|
-| Field edit distance (lower is better) | 0.932 | 0.821 | **−11.9%** |
-| Faithfulness | 0.897 | 0.914 | +0.017 |
-| Answer relevancy (vs gold) | 0.451 | 0.538 | **+0.086** |
+| Field edit distance (lower is better) | 0.910 | 0.834 | **−8.4 %** |
+| Faithfulness | 0.726 | 0.910 | **+0.183** |
+| Answer relevancy (vs gold) | 0.459 | 0.543 | **+0.084** |
 | Retrieval recall@5 | 0.800 | 0.800 |  0.000 |
-| Citation accuracy | 0.460 | 0.377 | −0.084 |
-| Rule application rate | 0.000 | 0.688 | **+0.688** |
+| Citation accuracy | 0.280 | 0.458 | **+0.178** |
+| Rule application rate | 0.000 | 0.662 | **+0.662** |
 | Edit memory size | 0 | 24 | +24 |
 
-The headline numbers are the edit-distance reduction (~12 %), the answer-relevancy lift (+8.6 % vs gold), and the rule-application rate jumping from zero to 0.69. The same five documents land noticeably closer to gold after the system has seen 24 simulated operator edits and run one rule-distillation pass.
+All six deltas point the right way. The same five documents land noticeably closer to gold after the system has seen 24 simulated operator edits and run one rule-distillation pass.
 
 **Retrieval recall@5 is identical across conditions because the retriever isn't being trained** — the prompt around the retriever is. That's expected and a useful sanity check that the eval is paired correctly.
 
-**Answer relevancy** rises +0.086 because the metric now compares the produced text against the gold summary text rather than against a static query. Under that framing, every rule-distilled wording and few-shot adoption that pulls the draft closer to the human reference shows up in the metric. (The original RAGAS-style "answer vs fixed query" reading was flat at 0.705 because the query was identical across both conditions; that interpretation is still available by passing a raw string to `answer_relevancy()`.)
+**Faithfulness +0.183** is the standout lift: the rules and few-shots push the model to ground claims in the specific deed-book/instrument references that appear in the retrieved chunks, which is exactly what faithfulness rewards.
 
-**Faithfulness rises slightly** (+0.017) — the rules and few-shots push the model to ground claims in the specific deed-book/instrument references that appear in the retrieved chunks, which is exactly what faithfulness rewards.
+**Citation accuracy +0.178** comes from the May-16 fix that drops ungroundable fallback findings: bare template strings like `"Vesting: 1 extracted item(s)."` had no chance of matching a snippet's tokens, so they were dragging the metric down on every section that fell through to the fallback. After requiring at least one shared content token before emitting a citation, the post-learning draft's denser, more specific claims pull citation_accuracy from 0.280 to 0.458.
 
-**Citation accuracy dips slightly** (−0.084). Most likely cause: the rules-injected prompt produces longer per-section drafts and some of the extra material isn't backed by a citation that the snippet/claim overlap test accepts. This is the right kind of regression to surface — the loop is doing something, and the something has a measurable cost.
+**Answer relevancy +0.084** because the metric compares the produced text against the gold summary text rather than a static query. Under that framing, every rule-distilled wording and few-shot adoption that pulls the draft closer to the human reference shows up in the metric. The original RAGAS-style "answer vs fixed query" reading was flat at 0.705 because the query was identical across both conditions; that interpretation is still available by passing a raw string to `answer_relevancy()`.
 
 Per-document and per-section detail is in `eval/results_pre.json` and `eval/results_post.json`.
 

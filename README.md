@@ -153,12 +153,12 @@ Five held-out docs (Wayne County commitment, OSMRE deed of trust, 1875 handwritt
 
 | Metric | No learning | With learning | Δ |
 |---|---:|---:|---:|
-| **Field edit distance** (lower is better) | 0.932 | 0.821 | **−11.9%** |
-| **Faithfulness** (claim ↔ retrieved chunk) | 0.897 | 0.914 | +0.017 |
-| **Answer relevancy** (produced vs gold) | 0.451 | 0.538 | **+0.086** |
+| **Field edit distance** (lower is better) | 0.910 | 0.834 | **−8.4 %** |
+| **Faithfulness** (claim ↔ retrieved chunk) | 0.726 | 0.910 | **+0.183** |
+| **Answer relevancy** (produced vs gold) | 0.459 | 0.543 | **+0.084** |
 | **Retrieval recall@5** (gold spans) | 0.800 | 0.800 |  0.000 |
-| **Citation accuracy** | 0.460 | 0.377 | −0.084 |
-| **Rule application rate** | 0.000 | 0.688 | **+0.688** |
+| **Citation accuracy** | 0.280 | 0.458 | **+0.178** |
+| **Rule application rate** | 0.000 | 0.662 | **+0.662** |
 | **Edit memory size** | 0 | 24 | +24 |
 
 Edit distance is the headline number — the same documents get noticeably closer to gold after the system has seen 24 simulated operator edits and run one rule-distillation pass. The full per-doc breakdown is in `eval/results_pre.json` and `eval/results_post.json`. More detail on methodology, why these metrics, and what's still weak in [docs/EVALUATION.md](docs/EVALUATION.md).
