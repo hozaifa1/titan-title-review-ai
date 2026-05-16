@@ -78,6 +78,27 @@ def field_edit_distance(
     return average, per_section
 
 
+_PAGE_MARKER_RE = re.compile(r"##\s*Page\s+(\d+)\b", re.IGNORECASE)
+
+
+def _hit_pages(hit: SearchHit) -> set[tuple[str, int]]:
+    """Every ``(doc_id, page)`` the chunk text actually covers.
+
+    A small document can collapse to one chunk that spans every page; if
+    we only credit ``hit.chunk.provenance.page`` we miss every gold span
+    on a different page even though the chunk text contains it. Reading
+    the ``## Page N`` markers out of the chunk text restores recall on
+    those small docs without splitting chunks.
+    """
+
+    doc_id = hit.chunk.doc_id
+    pages: set[tuple[str, int]] = {(doc_id, hit.chunk.provenance.page)}
+    body = hit.chunk.text or ""
+    for match in _PAGE_MARKER_RE.finditer(body):
+        pages.add((doc_id, int(match.group(1))))
+    return pages
+
+
 def retrieval_recall_at_k(
     gold: TitleReviewSummary, hits: list[SearchHit], k: int = 5
 ) -> float:
@@ -86,9 +107,9 @@ def retrieval_recall_at_k(
     gold_spans = _collect_spans(gold)
     if not gold_spans:
         return 1.0
-    hit_spans = {
-        (hit.chunk.doc_id, hit.chunk.provenance.page) for hit in hits[:k]
-    }
+    hit_spans: set[tuple[str, int]] = set()
+    for hit in hits[:k]:
+        hit_spans |= _hit_pages(hit)
     matched = sum(1 for span in gold_spans if span in hit_spans)
     return matched / len(gold_spans)
 

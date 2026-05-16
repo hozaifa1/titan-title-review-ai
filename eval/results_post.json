@@ -3,12 +3,12 @@
   "rules_version": "rules-v1",
   "edit_memory_size": 24,
   "aggregate": {
-    "field_edit_distance": 0.8337,
-    "retrieval_recall_at_5": 0.8,
+    "field_edit_distance": 0.8293,
+    "retrieval_recall_at_5": 1.0,
     "faithfulness": 0.9096,
-    "answer_relevancy": 0.5427,
-    "citation_accuracy": 0.4582,
-    "rule_application_rate": 0.6625
+    "answer_relevancy": 0.539,
+    "citation_accuracy": 0.46,
+    "rule_application_rate": 0.7
   },
   "cases": [
     {
@@ -164,7 +164,7 @@
     {
       "doc_id": "fromthepage_1875_handwritten_deed",
       "field_edit_distance": 0.9318198005698005,
-      "retrieval_recall_at_5": 0.0,
+      "retrieval_recall_at_5": 1.0,
       "faithfulness": 0.75,
       "answer_relevancy": 0.3925233644859813,
       "citation_accuracy": 1.0,
@@ -233,12 +233,12 @@
     },
     {
       "doc_id": "orlando_kobe_apartments_alta_survey",
-      "field_edit_distance": 0.9301954159196277,
+      "field_edit_distance": 0.9085401745063217,
       "retrieval_recall_at_5": 1.0,
       "faithfulness": 1.0,
-      "answer_relevancy": 0.49390243902439024,
-      "citation_accuracy": 0.09090909090909091,
-      "rule_application_rate": 0.6875,
+      "answer_relevancy": 0.47560975609756095,
+      "citation_accuracy": 0.1,
+      "rule_application_rate": 0.875,
       "per_section_edit_distance": [
         {
           "section": "s1_vesting_and_estate",
@@ -266,27 +266,27 @@
         },
         {
           "section": "s5_easements_and_restrictions",
-          "distance": 0.9516,
+          "distance": 0.6935,
           "gold_length": 398,
-          "produced_length": 257
+          "produced_length": 270
         },
         {
           "section": "s6_requirements_schedule_b_i",
-          "distance": 0.8462,
+          "distance": 1.0,
           "gold_length": 252,
-          "produced_length": 224
+          "produced_length": 293
         },
         {
           "section": "s7_exceptions_schedule_b_ii",
-          "distance": 1.0,
+          "distance": 0.8939,
           "gold_length": 413,
-          "produced_length": 585
+          "produced_length": 121
         },
         {
           "section": "s8_taxes_and_survey_matters",
-          "distance": 0.8765,
+          "distance": 0.9136,
           "gold_length": 420,
-          "produced_length": 453
+          "produced_length": 362
         }
       ],
       "per_section_citation_accuracy": {
@@ -380,12 +380,12 @@
     }
   ],
   "improvement_vs_pre": {
-    "field_edit_distance_delta": -0.0763,
-    "field_edit_distance_pct_reduction": 0.0838,
-    "faithfulness_delta": 0.1835,
-    "answer_relevancy_delta": 0.0836,
+    "field_edit_distance_delta": -0.0839,
+    "field_edit_distance_pct_reduction": 0.0919,
+    "faithfulness_delta": 0.1235,
+    "answer_relevancy_delta": 0.0845,
     "retrieval_recall_at_5_delta": 0.0,
-    "citation_accuracy_delta": 0.1781,
-    "rule_application_rate_post": 0.6625
+    "citation_accuracy_delta": 0.1362,
+    "rule_application_rate_post": 0.7
   }
 }

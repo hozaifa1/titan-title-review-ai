@@ -33,17 +33,17 @@ All five have hand-labelled gold `TitleReviewSummary` JSONs in `data/gold/`. The
 
 | Metric | Pre-learning | Post-learning | Δ |
 |---|---:|---:|---:|
-| Field edit distance (lower is better) | 0.910 | 0.834 | **−8.4 %** |
-| Faithfulness | 0.726 | 0.910 | **+0.183** |
-| Answer relevancy (vs gold) | 0.459 | 0.543 | **+0.084** |
-| Retrieval recall@5 | 0.800 | 0.800 |  0.000 |
-| Citation accuracy | 0.280 | 0.458 | **+0.178** |
-| Rule application rate | 0.000 | 0.662 | **+0.662** |
+| Field edit distance (lower is better) | 0.913 | 0.829 | **−9.2 %** |
+| Faithfulness | 0.786 | 0.910 | **+0.123** |
+| Answer relevancy (vs gold) | 0.455 | 0.539 | **+0.085** |
+| Retrieval recall@5 | 1.000 | 1.000 |  0.000 |
+| Citation accuracy | 0.324 | 0.460 | **+0.136** |
+| Rule application rate | 0.000 | 0.700 | **+0.700** |
 | Edit memory size | 0 | 24 | +24 |
 
 All six deltas point the right way. The same five documents land noticeably closer to gold after the system has seen 24 simulated operator edits and run one rule-distillation pass.
 
-**Retrieval recall@5 is identical across conditions because the retriever isn't being trained** — the prompt around the retriever is. That's expected and a useful sanity check that the eval is paired correctly.
+**Retrieval recall@5 = 1.000** in both conditions, up from 0.800 before the May-16 multi-page recall fix: small documents (notably the 1875 handwritten deed, ~450 chars total) collapse to a single chunk that spans every page, and the recall metric used to only credit the chunk's `provenance.page`. Crediting every `## Page N` marker the chunk text actually contains restores recall on small docs without splitting chunks. The metric is identical across conditions because the retriever isn't being trained — the prompt around the retriever is. That's expected and a useful sanity check that the eval is paired correctly.
 
 **Faithfulness +0.183** is the standout lift: the rules and few-shots push the model to ground claims in the specific deed-book/instrument references that appear in the retrieved chunks, which is exactly what faithfulness rewards.
 
