@@ -648,19 +648,84 @@ def _fallback_findings(
     hits: list[SearchHit],
     title_document: TitleDocument,
 ) -> list[CitedSentence]:
-    """Per-finding citations chosen by lexical overlap, not a single shared citation."""
+    """Per-finding citations chosen by lexical overlap, not a single shared citation.
+
+    Previously this emitted bare template strings like
+    ``"Vesting: 1 extracted item(s)."``. Those weren't groundable by any
+    chunk's snippet so they dragged citation_accuracy down for every
+    section that used the fallback. We now emit only content-bearing
+    findings — concrete party names, instrument types, lien creditors —
+    and skip anything whose tokens won't plausibly match a chunk.
+    """
 
     del spec
     findings: list[CitedSentence] = []
     for field_name, value in structured.items():
         if not value:
             continue
-        text = _finding_text(field_name, value)
+        text = _content_finding_text(field_name, value)
         if not text:
             continue
         finding_citation = _citation_for_text(text, hits, title_document)
+        # Drop the finding entirely if even the best snippet doesn't share
+        # any distinctive content tokens with the claim — emitting a
+        # citation we can't defend tanks citation_accuracy.
+        snippet = (finding_citation.snippet or "").lower()
+        claim_tokens = {
+            tok
+            for tok in re.findall(r"\w+", text.lower())
+            if len(tok) >= 4 and tok not in _GENERIC_WORDS
+        }
+        snippet_tokens = {
+            tok
+            for tok in re.findall(r"\w+", snippet)
+            if len(tok) >= 4
+        }
+        if not claim_tokens or not (claim_tokens & snippet_tokens):
+            continue
         findings.append(CitedSentence(text=text, citations=[finding_citation], confidence="medium"))
     return findings[:5]
+
+
+def _content_finding_text(field_name: str, value: Any) -> str | None:
+    """Render a structured field as one citable sentence with real content.
+
+    Bare ``"<Field>: N extracted item(s)."`` strings are NOT emitted —
+    they're impossible to ground against a chunk snippet, so they hurt
+    citation_accuracy without adding information.
+    """
+
+    label = field_name.replace("_", " ").title()
+    if isinstance(value, list):
+        if not value:
+            return None
+        names = _names_from_collection(value)
+        if names:
+            return f"{label}: {', '.join(names[:5])}."
+        return None
+    if isinstance(value, dict):
+        if "value" in value and value["value"] is not None:
+            return f"{label}: {value['value']}."
+        if "text" in value and value["text"]:
+            return f"{label}: {str(value['text'])[:220]}."
+    if value:
+        return None
+    return None
+
+
+def _names_from_collection(items: list[Any]) -> list[str]:
+    """Extract human-readable identifiers from a list of structured items."""
+
+    out: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        for key in ("name", "creditor", "holder", "text", "description", "instrument_type", "lien_type", "easement_type", "restriction_type"):
+            label_value = item.get(key)
+            if label_value:
+                out.append(str(label_value)[:80])
+                break
+    return out
 
 
 def _finding_text(field_name: str, value: Any) -> str | None:
