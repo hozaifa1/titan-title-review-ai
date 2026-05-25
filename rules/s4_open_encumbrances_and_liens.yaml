@@ -7,7 +7,7 @@ generated_from_edit_ids:
 - e_538655f01d4b
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: until, otherwise, each.'
+  text: 'Prefer terminology added by operators: until, otherwise, each.'
   trigger_edit_types:
   - wording
   - style

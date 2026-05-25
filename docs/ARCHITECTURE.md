@@ -1,6 +1,6 @@
 # Architecture
 
-A short, no-fluff walkthrough of how the pieces fit together. The full hour-by-hour build plan and decision log live in a private `architecture.md` (deliberately not in this repo).
+A short walkthrough of how the pieces fit together.
 
 ## Data flow
 
@@ -122,7 +122,7 @@ Two parallel retrieval mechanisms feed the next draft:
 - **Dynamic few-shot.** Each `EditEvent` (before/after for one field in one section) is embedded with BGE-M3 and dropped into a `edit_memory` Qdrant collection. At draft time, the top-3 most similar past edits for the section get rendered as before/after pairs in the prompt — but only if the edit's "after" text is reasonably supported by the current document's retrieved chunks (the cross-matter contamination guard).
 - **Distilled rules.** Every N edits (or on demand via `learn-distill`) an LLM-as-judge pass takes the recent edits for a section and proposes ≤7 reusable rules in YAML. The rules are versioned (`rules_version`) and injected into the system prompt at generation time.
 
-No fine-tuning. RLHF/DPO in 22 hours would have produced an uninspectable model with too little data to be honest about. Retrieval-based learning is auditable end to end: you can read the rule set, you can read the few-shots, you can see which edit fired.
+No fine-tuning. RLHF/DPO over a tiny simulated edit set would produce an uninspectable model with too little data to be honest about. Retrieval-based learning is auditable end to end: you can read the rule set, you can read the few-shots, you can see which edit fired.
 
 ## Multi-provider LLM client
 

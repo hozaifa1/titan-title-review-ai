@@ -7,7 +7,7 @@ generated_from_edit_ids:
 - e_2b112de6613b
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: obtain, metes-and-bounds, platted.'
+  text: 'Prefer terminology added by operators: obtain, metes-and-bounds, platted.'
   trigger_edit_types:
   - wording
   - style

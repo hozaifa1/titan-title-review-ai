@@ -30,7 +30,7 @@
     "matter_id": "wayne_county_commitment_0",
     "section_name": "s3_chain_of_title",
     "field_path": "summary[0].text",
-    "before": "The extracted chain of title includes 0 recorded instrument(s) requiring reviewer confirmation.",
+    "before": "The extracted chain of title includes 0 recorded instrument(s) requiring operator confirmation.",
     "after": "The chain of title is supported by recorded instruments; cite Deed Book and Page (and Instrument Number where present) for every link in the chain.",
     "edit_type": "citation_fix",
     "operator_id": "sim-op",

@@ -1,4 +1,4 @@
-// BAML declaration for the Hour 3-6 extraction step.
+// BAML declaration for structured title-document extraction.
 // Generate a Python client with `baml-cli generate` once model credentials are
 // configured; titan.ingest.extract.ExtractTitleDocument keeps the same public
 // function signature for the offline checkpoint path.

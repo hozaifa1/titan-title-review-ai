@@ -4,7 +4,7 @@ services:
     container_name: titan-qdrant
     restart: unless-stopped
     ports:
-      # Bound to loopback only — local dev / reviewer demo, not a public service.
+      # Bound to loopback only — local dev / operator demo, not a public service.
       - "127.0.0.1:6333:6333"
       - "127.0.0.1:6334:6334"
     volumes:

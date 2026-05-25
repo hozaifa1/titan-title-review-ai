@@ -242,7 +242,7 @@ class TitleReviewSection(BaseModel):
     bullet_findings: list[CitedSentence] = Field(default_factory=list)
     gaps: list[str] = Field(
         default_factory=list,
-        description="Information missing from source docs that a reviewer should obtain",
+        description="Information missing from source docs that an operator should obtain",
     )
     flags: list[Literal["red", "yellow", "green"]] = Field(default_factory=list)
 

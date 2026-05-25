@@ -7,7 +7,7 @@ generated_from_edit_ids:
 - e_a07fea731332
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: supported, page, every.'
+  text: 'Prefer terminology added by operators: supported, page, every.'
   trigger_edit_types:
   - wording
   - style

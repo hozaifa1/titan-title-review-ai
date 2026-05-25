@@ -7,7 +7,7 @@ generated_from_edit_ids:
 - e_799ec5104070
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: verify, appear, record.'
+  text: 'Prefer terminology added by operators: verify, appear, record.'
   trigger_edit_types:
   - wording
   - style

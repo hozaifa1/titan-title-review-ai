@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "specteraiengr"
+name = "titan-title-review-ai"
 version = "0.1.0"
-description = "Title-Insurance Analyst (Titan) - Title Review AI for Pearson Specter Litt"
+description = "Title-Insurance Analyst (Titan) - cited title review AI"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

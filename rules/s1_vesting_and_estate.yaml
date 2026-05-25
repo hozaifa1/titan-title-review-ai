@@ -7,7 +7,7 @@ generated_from_edit_ids:
 - e_bb5f94c19ba6
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: record, closing, entity.'
+  text: 'Prefer terminology added by operators: record, closing, entity.'
   trigger_edit_types:
   - wording
   - style

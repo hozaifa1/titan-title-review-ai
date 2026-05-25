@@ -7,7 +7,7 @@ generated_from_edit_ids:
 - e_23819088e600
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: current, delinquent, taxes.'
+  text: 'Prefer terminology added by operators: current, delinquent, taxes.'
   trigger_edit_types:
   - wording
   - style

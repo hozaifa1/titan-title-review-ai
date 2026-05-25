@@ -4,7 +4,7 @@ Left pane:  the default draft (read-only, pretty-printed).
 Right pane: the same JSON, editable inline.
 Buttons:    Capture Edits  ·  Distill Rules  ·  Regenerate.
 
-The intent is to give a reviewer a one-screen demo of the learning loop:
+The intent is to give an operator a one-screen demo of the learning loop:
 load a draft, change a field, click through capture → distill → regenerate,
 and watch the next draft pick up the pattern.
 

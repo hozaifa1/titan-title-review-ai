@@ -333,7 +333,7 @@ def answer_relevancy(
         is identical across conditions.
       * a ``TitleReviewSummary`` — the gold summary. The metric then
         becomes "how close is the produced text to the canonical answer",
-        which is what the rest of the rubric is implicitly measuring and
+        which is what the rest of the evaluation is implicitly measuring and
         which actually moves with the learning loop.
 
     Falls back to token Jaccard with hashing-fallback embedders so the

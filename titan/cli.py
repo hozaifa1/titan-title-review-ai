@@ -59,7 +59,7 @@ def main() -> None:
     ingest.add_argument("--out-dir", default="data/out")
     ingest.add_argument("--sqlite", default="data/titan.db")
 
-    demo = subparsers.add_parser("demo-ingest", help="Run the Hour 3-6 checkpoint on three sample docs.")
+    demo = subparsers.add_parser("demo-ingest", help="Run the ingestion checkpoint on three sample docs.")
     demo.add_argument("--out-dir", default="data/out")
     demo.add_argument("--sqlite", default="data/titan.db")
     demo.add_argument("paths", nargs="*")

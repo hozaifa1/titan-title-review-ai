@@ -6,7 +6,7 @@ Why this lives in its own module
 Production wires a real Qwen2.5-VL (or any other VLM) endpoint here. The
 demo distribution ships **without** the model: instead it ships a small set
 of human-written transcripts under ``data/gold/<doc_id>.transcript.md`` so
-reviewers can run the pipeline end-to-end without GPU infra.
+users can run the pipeline end-to-end without GPU infra.
 
 The hook is intentionally tiny — three orthogonal concerns separated:
 

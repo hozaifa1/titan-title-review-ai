@@ -200,7 +200,7 @@ def _judge_prompt(section: str, events: list[EditEvent], existing_rules: list[Ru
         ],
     }
     return (
-        "You are a meta-reviewer for a real-estate title-review AI.\n"
+        "You are a meta-evaluator for a real-estate title-review AI.\n"
         "You are given the last edits the senior partner made to drafts of section "
         f"'{section}'. Each edit shows the model's BEFORE text and the partner's AFTER text.\n\n"
         "Task: extract up to 7 REUSABLE RULES that, if followed by the drafter from the start, "
@@ -328,7 +328,7 @@ def _offline_distill(events: list[EditEvent]) -> list[Rule]:
         rules.append(
             Rule(
                 id="r1",
-                text=f"Prefer terminology added by reviewers: {', '.join(top_tokens)}.",
+                text=f"Prefer terminology added by operators: {', '.join(top_tokens)}.",
                 trigger_edit_types=["wording", "style"],
                 confidence=0.6,
             )

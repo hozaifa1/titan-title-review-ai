@@ -45,7 +45,7 @@
         "confidence": "medium"
       },
       {
-        "text": "Applied rule (r1): Prefer terminology added by reviewers: entity, identified, record.",
+        "text": "Applied rule (r1): Prefer terminology added by operators: entity, identified, record.",
         "citations": [
           {
             "doc_id": "wayne_county_commitment_0",
@@ -115,7 +115,7 @@
     "section_name": "Chain of Title",
     "summary": [
       {
-        "text": "The extracted chain of title includes 0 recorded instrument(s) requiring reviewer confirmation. (style adopted from prior operator edits)",
+        "text": "The extracted chain of title includes 0 recorded instrument(s) requiring operator confirmation. (style adopted from prior operator edits)",
         "citations": [
           {
             "doc_id": "wayne_county_commitment_0",
@@ -147,7 +147,7 @@
         "confidence": "medium"
       },
       {
-        "text": "Applied rule (r1): Prefer terminology added by reviewers: page, number, book.",
+        "text": "Applied rule (r1): Prefer terminology added by operators: page, number, book.",
         "citations": [
           {
             "doc_id": "wayne_county_commitment_0",
@@ -205,7 +205,7 @@
     ],
     "bullet_findings": [
       {
-        "text": "Applied rule (r1): Prefer terminology added by reviewers: status, treat, amount.",
+        "text": "Applied rule (r1): Prefer terminology added by operators: status, treat, amount.",
         "citations": [
           {
             "doc_id": "wayne_county_commitment_0",
@@ -292,7 +292,7 @@
     ],
     "bullet_findings": [
       {
-        "text": "Applied rule (r1): Prefer terminology added by reviewers: execution, lender, release.",
+        "text": "Applied rule (r1): Prefer terminology added by operators: execution, lender, release.",
         "citations": [
           {
             "doc_id": "wayne_county_commitment_0",
@@ -350,7 +350,7 @@
     ],
     "bullet_findings": [
       {
-        "text": "Applied rule (r1): Prefer terminology added by reviewers: enumerate, standard, survey.",
+        "text": "Applied rule (r1): Prefer terminology added by operators: enumerate, standard, survey.",
         "citations": [
           {
             "doc_id": "wayne_county_commitment_0",
@@ -408,7 +408,7 @@
     ],
     "bullet_findings": [
       {
-        "text": "Applied rule (r1): Prefer terminology added by reviewers: delinquent, confirm, taxes.",
+        "text": "Applied rule (r1): Prefer terminology added by operators: delinquent, confirm, taxes.",
         "citations": [
           {
             "doc_id": "wayne_county_commitment_0",

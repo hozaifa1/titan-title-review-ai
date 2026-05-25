@@ -1,10 +1,8 @@
 # Titan — Title Review AI
 
-A take-home for Pearson Specter Litt. Ingest messy real-estate title documents, pull structured facts out of them, retrieve the relevant passages, and draft a cited ALTA-style **Title Review Summary** that an operator can edit. The system learns from those edits and applies the patterns to the next draft.
+Titan ingests messy real-estate title documents, pulls structured facts out of them, retrieves the relevant passages, and drafts a cited ALTA-style **Title Review Summary** that an operator can edit. The system learns from those edits and applies the patterns to the next draft.
 
 Author: S. M. Hozaifa Hossain
-Submission date: May 16, 2026
-Repo collaborators: [@tsensei](https://github.com/tsensei), [@abubakarsiddik31](https://github.com/abubakarsiddik31)
 
 ---
 
@@ -120,7 +118,7 @@ data/
   out/                      Generated drafts (gitignored)
   .md_cache/                Cached parsed markdown (gitignored)
   .llm_cache/               Cached LLM responses (gitignored)
-examples/                   Reviewer-friendly v1/v2/edited artifacts
+examples/                   Sample v1/v2/edited artifacts
 eval/                       results_pre.json, results_post.json
 docs/                       Architecture, evaluation, assumptions
 tests/                      Pytest suite
@@ -134,7 +132,7 @@ Dockerfile                  Reproducible runtime image
 
 ## Sample input & output
 
-The `examples/` folder has everything a reviewer needs without running anything:
+The `examples/` folder has sample artifacts you can inspect without running anything:
 
 - `examples/input.pdf` — Wayne County commitment (clean digital PDF).
 - `examples/output_v1.json` — first-pass draft (no learning).
@@ -169,12 +167,12 @@ Edit distance is the headline number — the same documents get noticeably close
 
 The compressed version (full version in [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md)):
 
-- **Output is grounded, not correct.** The brief says correctness isn't being graded. Every claim in a draft carries a citation; the operator decides if it's right.
-- **Learning is retrieval, not fine-tuning.** Past edits become few-shot examples and distilled rules. RLHF/DPO in 22 hours would have been theatre.
-- **Offline parity.** Every external call has a fallback: pdfplumber → Docling → Qwen2.5-VL hook (transcript fixture in offline mode); LLM provider chain walks 6 providers before degrading to a structured-extraction heuristic that pulls real names, instrument types, and amounts. Reviewers without keys still get a working pipeline.
+- **Output is grounded, not self-certifying.** Every claim in a draft carries a citation; the operator decides if it's right.
+- **Learning is retrieval, not fine-tuning.** Past edits become few-shot examples and distilled rules, keeping the learning loop inspectable and auditable.
+- **Offline parity.** Every external call has a fallback: pdfplumber → Docling → Qwen2.5-VL hook (transcript fixture in offline mode); LLM provider chain walks 6 providers before degrading to a structured-extraction heuristic that pulls real names, instrument types, and amounts. Users without keys still get a working pipeline.
 - **VLM hook, not VLM call.** Handwritten pages route through `titan/ingest/vlm.py`. Default implementation returns `None`; with `TITAN_VLM_ENABLED=1` and a real `call_vlm` body it wires straight into a hosted Qwen2.5-VL (or any other VLM). The transcript fixture is a clearly-labelled offline stub — never consulted when the real VLM is enabled.
 - **SQLite for persistence.** One file, zero infra. Scales fine for tens of thousands of edits.
-- **PDFs in `data/raw/`** are committed for reproducibility. Reviewers don't have to scrounge for samples.
+- **PDFs in `data/raw/`** are committed for reproducibility. The sample corpus is available out of the box.
 - **A real Qwen2.5-VL call is a wiring change, not a re-architecture.** The page classifier already routes to it.
 - **Sections live in one place.** [`titan/sections.py`](titan/sections.py) is the canonical ALTA section list. The schema, orchestrator, metrics, and edit-diff all derive from it — adding a ninth section is one edit, not three.
 
@@ -203,11 +201,9 @@ The compressed version (full version in [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.m
 
 ---
 
-## Submission notes
+## Repository
 
-- Repo: `github.com/hozaifa1/pearson-specter-titan`
-- Collaborators added: `@tsensei`, `@abubakarsiddik31`
-- Notification email: `talha@ideabuilders.studio`
+- Repo: `github.com/hozaifa1/titan-title-review-ai`
 
 ---
 

@@ -7,7 +7,7 @@ generated_from_edit_ids:
 - e_0caafe6a533e
 rules:
 - id: r1
-  text: 'Prefer terminology added by reviewers: party, execution, identify.'
+  text: 'Prefer terminology added by operators: party, execution, identify.'
   trigger_edit_types:
   - wording
   - style

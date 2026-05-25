@@ -81,14 +81,14 @@ python -m titan.cli learn-distill \
 
 ## What this doesn't tell you
 
-Five documents is a small enough sample that the edit-distance delta isn't a tight estimate — it's a direction. The 95% bootstrap CI on the delta (over the five docs) is still wide. The right way to fix that is more documents, which is a build-budget problem, not an architectural one.
+Five documents is a small enough sample that the edit-distance delta isn't a tight estimate — it's a direction. The 95% bootstrap CI on the delta (over the five docs) is still wide. The right way to fix that is more documents, which is a dataset-expansion problem, not an architectural one.
 
-The metrics don't measure clinical accuracy. They measure how close the draft is to the human gold. A draft can be wrong and close, or right and far. The brief explicitly takes correctness off the table, which is why this evaluation is about structure and grounding rather than truth.
+The metrics don't measure clinical accuracy. They measure how close the draft is to the human gold. A draft can be wrong and close, or right and far, which is why this evaluation is about structure and grounding rather than truth.
 
 ## What I'd add
 
 - **Per-doc adaptive eval query** to make answer-relevancy actually move with learning instead of being clamped by topic similarity. The query would be assembled from the gold document's parties + parcel + instrument types so wording precision shows up in the metric.
 - **Confidence intervals via 1000-iteration bootstrap.** Easy add, real value for any audience that knows stats.
-- **Per-section rubric.** Some sections (Vesting, Schedule B) are mechanical; others (Easements, Survey Matters) require judgement. Reporting a single aggregate hides that. Per-section CSV would help.
+- **Per-section scoring.** Some sections (Vesting, Schedule B) are mechanical; others (Easements, Survey Matters) require judgement. Reporting a single aggregate hides that. Per-section CSV would help.
 - **Hallucination rate via Patronus Lynx.** Send each (sentence, citation) pair to Lynx, count FAILs, divide by total claims. Gives you a real grounding number instead of the citation-overlap proxy.
 - **A/B on edit memory size.** Right now post-condition has 24 edits in memory. Sweeping that from 0 → 24 in steps shows the learning curve, not just the endpoint.

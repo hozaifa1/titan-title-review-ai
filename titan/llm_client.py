@@ -611,8 +611,8 @@ class LLMClient:
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
-                    "HTTP-Referer": "https://github.com/specter-titan",
-                    "X-Title": "Specter Titan Title Review",
+                    "HTTP-Referer": "https://github.com/hozaifa1/titan-title-review-ai",
+                    "X-Title": "Titan Title Review AI",
                 },
                 json=payload,
             )

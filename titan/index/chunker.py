@@ -43,7 +43,7 @@ async def chunk_title_document(
     Per-chunk Gemini context calls run in parallel under a small semaphore so a
     long document does not serialize on N x ~1s LLM round-trips. The offline
     fallback derives a stable sentence from the nearest Schedule/page heading so
-    tests and reviewer checkpoints run without external calls.
+    tests and local checkpoints run without external calls.
     """
 
     cfg = config or ChunkerConfig()
