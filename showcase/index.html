@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Titan — Title Review AI</title>
+<meta name="description" content="Titan ingests messy real-estate title documents, extracts a typed schema with character-level provenance, retrieves relevant passages, and drafts a cited ALTA-style Title Review Summary — then learns from operator edits." />
+<meta name="theme-color" content="#09080a" />
+<meta property="og:title" content="Titan — Title Review AI" />
+<meta property="og:description" content="From messy title PDFs to cited ALTA summaries. Hybrid retrieval, typed extraction, character-level provenance, and a learning loop." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#14110b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+      </span>
+      <span>Titan</span>
+    </a>
+    <div class="nav-links">
+      <a href="#pipeline">Pipeline</a>
+      <a href="#demo">Cited drafts</a>
+      <a href="#learning">Learning loop</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#notes">Notes</a>
+    </div>
+    <a class="nav-cta" href="#demo">
+      See a draft
+      <span class="chip" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+    </a>
+  </div>
+</nav>
+
+<!-- hero -->
+<header class="hero wrap" id="top">
+  <div class="hero-grid">
+    <div>
+      <span class="eyebrow reveal"><span class="dot"></span> Title Review AI</span>
+      <h1 class="reveal" data-d="1">Messy title documents in. <em>Cited ALTA summaries</em> out.</h1>
+      <p class="hero-sub reveal" data-d="2">Titan parses deeds, commitments, surveys and handwritten conveyances, extracts a typed schema with character-level provenance, and drafts an eight-section Title Review Summary where every line points back to its source.</p>
+      <div class="hero-cta reveal" data-d="3">
+        <a class="btn btn-primary" href="#demo">Explore a cited draft<span class="chip" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+        <a class="btn btn-ghost" href="#pipeline">How it works</a>
+      </div>
+      <div class="hero-stats reveal" data-d="4">
+        <div class="stat"><div class="n">8</div><div class="l">ALTA sections</div></div>
+        <div class="stat"><div class="n">6</div><div class="l">LLM providers · failover</div></div>
+        <div class="stat"><div class="n">char-level</div><div class="l">Citation provenance</div></div>
+      </div>
+    </div>
+
+    <!-- hero document mock -->
+    <div class="bezel reveal trace-card" data-d="3">
+      <div class="core" style="padding:24px;border-radius:16px;position:relative;overflow:hidden;">
+        <div class="trace-label" style="position:static;margin-bottom:16px;"><span class="live-dot"></span> wayne_county_commitment.pdf</div>
+        <div class="docmock">
+          <div class="line w90"></div>
+          <div class="line w70"></div>
+          <div class="line lit">Title to the estate is vested in <b>Margaret A. Whitfield</b></div>
+          <div class="line w80"></div>
+          <div class="line w60"></div>
+          <div class="line w85"></div>
+        </div>
+        <div class="extract-chip">
+          <div class="ec-h">TitleDocument</div>
+          <div class="ec-row"><span>vesting.owner</span><span class="ec-v">"Margaret A. Whitfield"</span></div>
+          <div class="ec-row"><span>span</span><span class="ec-v">p3 · 412–434</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- pipeline -->
+<section id="pipeline" class="wrap">
+  <div class="section-head reveal">
+    <span class="eyebrow"><span class="dot"></span> The pipeline</span>
+    <h2>Five stages from raw PDF to a draft you can trust.</h2>
+    <p>Every stage keeps its provenance. By the time a sentence lands in the summary, you can trace it back to a document, a page, and a character span.</p>
+  </div>
+
+  <div class="pipe reveal" data-d="1">
+    <div class="pipe-rail">
+      <div class="stage"><div class="core">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h4"/></svg></span>
+        <h4>Parse</h4>
+        <div class="desc">pdfplumber · Docling<br/>VLM for handwriting</div>
+        <span class="tag">cached markdown</span>
+      </div><span class="spark"></span></div>
+
+      <div class="stage"><div class="core">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="15" r="3"/></svg></span>
+        <h4>Extract</h4>
+        <div class="desc">BAML → TitleDocument<br/>typed + provenance</div>
+        <span class="tag">heuristic fallback</span>
+      </div><span class="spark"></span></div>
+
+      <div class="stage"><div class="core">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+        <h4>Index</h4>
+        <div class="desc">BM25 + BGE-M3<br/>Qdrant hybrid</div>
+        <span class="tag">RRF + rerank</span>
+      </div><span class="spark"></span></div>
+
+      <div class="stage"><div class="core">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/><path d="M18 16v6M15 19h6"/></svg></span>
+        <h4>Draft</h4>
+        <div class="desc">8 ALTA sections<br/>parallel · cited</div>
+        <span class="tag">[doc:page:span]</span>
+      </div><span class="spark"></span></div>
+
+      <div class="stage"><div class="core">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></span>
+        <h4>Learn</h4>
+        <div class="desc">diff operator edits<br/>distill → rules</div>
+        <span class="tag">versioned YAML</span>
+      </div></div>
+    </div>
+
+    <div class="pipe-outcomes">
+      <div class="bezel"><div class="core" style="padding:22px;display:flex;gap:14px;align-items:center;">
+        <span class="ico" style="width:28px;height:28px;color:var(--signal)" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div><h4 style="font-family:var(--sans);font-weight:600;font-size:15px;margin-bottom:3px;">Works offline</h4><div class="desc" style="font-family:var(--mono);font-size:11.5px;color:var(--ink-mute)">No API key? A deterministic regex/heuristic extractor and local models keep the whole pipeline running.</div></div>
+      </div></div>
+      <div class="bezel"><div class="core" style="padding:22px;display:flex;gap:14px;align-items:center;">
+        <span class="ico" style="width:28px;height:28px;color:var(--signal)" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8 8 10 4.6-2 8-5 8-10V6z"/></svg></span>
+        <div><h4 style="font-family:var(--sans);font-weight:600;font-size:15px;margin-bottom:3px;">Provider failover</h4><div class="desc" style="font-family:var(--mono);font-size:11.5px;color:var(--ink-mute)">Cerebras · SambaNova · Groq · Gemini · GitHub Models · OpenRouter — first to respond wins, under per-provider locks.</div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- demo: cited draft explorer -->
+<section id="demo" class="wrap">
+  <div class="section-head reveal">
+    <span class="eyebrow"><span class="dot"></span> Cited drafts</span>
+    <h2>Pick a section. Trace every claim to its source.</h2>
+    <p>This is a real generated summary for a sample commitment. Hover a citation to light up the exact passage it came from — provenance you can audit, not a black box.</p>
+  </div>
+
+  <div class="reveal" data-d="1">
+    <div class="sections" id="sectionTabs" role="tablist" aria-label="ALTA sections"></div>
+    <div class="explorer">
+      <div class="draft bezel"><div class="core">
+        <div class="sec-name" id="secName">Vesting</div>
+        <div class="sec-tag" id="secTag">ALTA · Schedule A</div>
+        <div class="body" id="secBody"></div>
+      </div></div>
+      <div class="evidence bezel"><div class="core">
+        <div class="head">
+          <h3>Retrieved evidence</h3>
+          <span class="meta">top-k · reranked</span>
+        </div>
+        <div id="evidence"></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- learning loop -->
+<section id="learning" class="wrap">
+  <div class="section-head reveal">
+    <span class="eyebrow"><span class="dot"></span> Learning loop</span>
+    <h2>It gets better every time an operator edits a draft.</h2>
+    <p>Edits aren't thrown away. Titan turns them into reusable guidance that shapes the next summary.</p>
+  </div>
+  <div class="loop reveal" data-d="1">
+    <div class="step bezel"><div class="core">
+      <div class="n">01</div>
+      <h4>Capture the edit</h4>
+      <p>A field-level diff between the draft and the operator's final version is logged to SQLite as an EditEvent.</p>
+    </div></div>
+    <div class="step bezel"><div class="core">
+      <div class="n">02</div>
+      <h4>Distill a rule</h4>
+      <p>An LLM-as-judge pass condenses recent edits per section into a versioned YAML rule set — the patterns behind the corrections.</p>
+    </div></div>
+    <div class="step bezel"><div class="core">
+      <div class="n">03</div>
+      <h4>Apply it next time</h4>
+      <p>Rules and the closest past edits are injected as few-shot context, so the next draft starts where the last operator left off.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- architecture -->
+<section id="architecture" class="wrap">
+  <div class="section-head reveal">
+    <span class="eyebrow"><span class="dot"></span> Architecture</span>
+    <h2>Built so a reviewer can defend every line.</h2>
+    <p>Retrieval, extraction and drafting are all wired for inspectability and graceful degradation.</p>
+  </div>
+
+  <div class="bento">
+    <div class="item reveal wide" data-d="1"><div class="core">
+      <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.5 6H13c1.5 0 2.5 2 2.5 6M8.5 18H13c1.5 0 2.5-2 2.5-6"/></svg></span>
+      <h4>Hybrid retrieval, fused and reranked</h4>
+      <p>BM25 sparse and BGE-M3 dense run in parallel, fused with Reciprocal Rank Fusion, then reranked by bge-reranker-v2-m3 down to the top-5. Each chunk carries its <span class="mono">{doc_id, page, char_span}</span> so citations stay inspectable.</p>
+    </div></div>
+    <div class="item reveal" data-d="2"><div class="core">
+      <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg></span>
+      <h4>Typed extraction</h4>
+      <p>BAML produces a typed TitleDocument with character-level provenance — never free-text guesses.</p>
+    </div></div>
+    <div class="item reveal" data-d="1"><div class="core">
+      <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8 8 10 4.6-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
+      <h4>Degrades gracefully</h4>
+      <p>A heuristic extractor and local models run underneath, so a missing API key never stops a review.</p>
+    </div></div>
+    <div class="item reveal" data-d="2"><div class="core">
+      <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg></span>
+      <h4>Parallel section fan-out</h4>
+      <p>All eight ALTA sections generate concurrently under per-provider locks. The section list lives in one file — a ninth is a single edit.</p>
+    </div></div>
+    <div class="item reveal" data-d="3"><div class="core">
+      <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></span>
+      <h4>Closes the loop</h4>
+      <p>Operator edits become diffs, few-shot examples and distilled rules that steer the next draft.</p>
+    </div></div>
+  </div>
+
+  <div class="stack reveal" data-d="2" style="margin-top:34px">
+    <span>Python</span><span>BAML</span><span>Qdrant</span><span>BGE-M3</span><span>BM25 + RRF</span><span>bge-reranker-v2-m3</span><span>pdfplumber</span><span>Docling</span><span>Qwen2.5-VL</span><span>SQLite</span><span>Streamlit</span>
+  </div>
+</section>
+
+<!-- notes -->
+<section id="notes" class="wrap">
+  <div class="section-head reveal">
+    <span class="eyebrow"><span class="dot"></span> Engineering notes</span>
+    <h2>The decisions that matter.</h2>
+  </div>
+  <div class="notes">
+    <div class="note bezel reveal" data-d="1"><div class="core">
+      <div class="q">What it does</div>
+      <h3>Cited title review, end to end</h3>
+      <p>Hand it a PDF — commitment, deed, mortgage, lis pendens, survey, tax certificate. It parses, extracts a typed schema, retrieves the relevant passages, and drafts an eight-section ALTA summary with inline citations an operator can edit and regenerate.</p>
+    </div></div>
+    <div class="note bezel reveal" data-d="2"><div class="core">
+      <div class="q">Why provenance</div>
+      <h3>Every claim is traceable</h3>
+      <p>Chunks carry doc id, page and character span from ingestion through retrieval to the final sentence. A reviewer can click any citation and land on the exact source text — the difference between a tool you can sign off on and one you can't.</p>
+    </div></div>
+    <div class="note bezel reveal" data-d="1"><div class="core">
+      <div class="q">What I learned</div>
+      <h3>Reliability beats cleverness</h3>
+      <p>Multi-provider failover, per-page parse timeouts, heuristic fallbacks and offline models matter more than any single model choice. A pipeline that always returns something useful is worth more than one that's occasionally brilliant and often down.</p>
+    </div></div>
+    <div class="note bezel reveal" data-d="2"><div class="core">
+      <div class="q">What I'd improve</div>
+      <h3>Tighter human-in-the-loop</h3>
+      <p>Surface rule changes for operator approval, add confidence bands per section, expand the handwriting VLM path beyond fixtures, and benchmark retrieval recall against a labeled span set in the eval harness.</p>
+    </div></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <div class="muted">Titan — Title Review AI · by S. M. Hozaifa Hossain.</div>
+      <div class="mono">Source kept private · sample data shown for demonstration</div>
+    </div>
+    <a class="btn btn-ghost" href="#top" style="font-size:13px;padding:10px 18px">Back to top</a>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
